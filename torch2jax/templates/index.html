@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Torch2Jax</title>
+
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='output.css') }}"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script type="module">
+      import {
+        Draggable,
+        Sortable,
+        Droppable,
+        Swappable,
+        Plugins,
+      } from "https://cdn.jsdelivr.net/npm/@shopify/draggable/build/esm/index.mjs";
+      const sortableLists = document.querySelectorAll(".draggable-list");
+
+      for (const sortableList of sortableLists) {
+        const sortable = new Sortable(sortableList, {
+          draggable: "li",
+          plugins: [Plugins.SortAnimation],
+          swapAnimation: {
+            duration: 200,
+            easingFunction: "ease-in-out",
+          },
+        });
+      }
+    </script>
+  </head>
+  <body class="w-10/12 mx-auto">
+    <script>
+      const Toast = Swal.mixin({
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 5000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+          toast.onmouseenter = Swal.stopTimer;
+          toast.onmouseleave = Swal.resumeTimer;
+        },
+      });
+      async function convert() {
+        const jaxFields = Array.from(
+          document.querySelectorAll(".draggable-list")[0].children,
+        ).map((li) => {
+          const path = li.getAttribute("data-path");
+          const shape = li.getAttribute("data-shape");
+          const type = li.getAttribute("data-type");
+          return { path, shape, type };
+        });
+
+        const torchFields = Array.from(
+          document.querySelectorAll(".draggable-list")[1].children,
+        ).map((li) => {
+          const path = li.getAttribute("data-path");
+          const shape = li.getAttribute("data-shape");
+          return { path, shape };
+        });
+
+        console.log({
+          jaxFields,
+          torchFields,
+        });
+
+        const jaxLength = jaxFields.length;
+        const torchLength = torchFields.length;
+
+        if (jaxLength !== torchLength) {
+          Toast.fire({
+            icon: "error",
+            title: "The number of fields in JAX and PyTorch should be the same",
+          });
+          return;
+        }
+
+        for (let i = 0; i < jaxLength; i++) {
+          if (jaxFields[i].shape !== torchFields[i].shape) {
+            Toast.fire({
+              icon: "error",
+              title: `${jaxFields[i].path} has shape ${jaxFields[i].shape}, while ${torchFields[i].path} has shape ${torchFields[i].shape}`,
+            });
+            return;
+          }
+        }
+
+        const response = await fetch("/convert", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            jaxFields,
+            torchFields,
+          }),
+        });
+
+        const res = await response.json();
+        console.log(res);
+        if (res.error) {
+          Toast.fire({
+            icon: "error",
+            title: res.error,
+          });
+        } else {
+          Toast.fire({
+            icon: "success",
+            title: "Conversion successful",
+          });
+        }
+      }
+    </script>
+    <h1 class="text-3xl my-12">Welcome to Torch2Jax</h1>
+
+    <div class="flex space-x-4">
+      <div class="w-full">
+        <h2 class="text-2xl">JAX</h2>
+        <ul class="draggable-list menu bg-base-200 rounded-box">
+          {% for field in pytree_fields %}
+          <li
+            draggable="true"
+            data-path="{{field.path}}"
+            data-shape="{{field.shape}}"
+            data-type="{{field.type}}"
+          >
+            <p
+              class="tooltip text-left"
+              data-path="{{field.path}}"
+              data-tip="{{field.type}}"
+            >
+              {{ field.path}} {{field.shape }}
+            </p>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="w-full">
+        <h2 class="text-2xl">PyTorch</h2>
+        <ul class="draggable-list menu bg-base-200 rounded-box w-full">
+          {% for field in torch_fields %}
+          <li
+            draggable="true"
+            data-path="{{field.path}}"
+            data-shape="{{field.shape}}"
+          >
+            <p class="text-left">{{ field.path }} {{ field.shape }}</p>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    <div class="flex justify-center my-12">
+      <button onclick="convert()" class="btn btn-accent btn-wide btn-lg">
+        Convert!
+      </button>
+    </div>
+  </body>
+</html>
