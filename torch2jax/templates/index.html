@@ -46,7 +46,46 @@
           toast.onmouseleave = Swal.resumeTimer;
         },
       });
-      async function convert() {
+
+      async function visualize() {
+        const fields = getJaxAndTorchFields();
+        if (fields.error) {
+          Toast.fire({
+            icon: "error",
+            title: "The number of fields in JAX and PyTorch should be the same",
+          });
+        }
+        const jaxFields = fields.jaxFields;
+        const torchFields = fields.torchFields;
+        var data = JSON.stringify({
+          jaxFields: jaxFields,
+          torchFields: torchFields,
+        });
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/visualize", true);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.onload = function () {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            // Successfully received response
+            var container = document.getElementById("visualizationResult");
+            container.innerHTML = xhr.responseText;
+            // Execute any scripts that were in the response
+            var scripts = container.getElementsByTagName("script");
+            for (var i = 0; i < scripts.length; i++) {
+              var script = document.createElement("script");
+              script.text = scripts[i].text;
+              document.head.appendChild(script).parentNode.removeChild(script);
+            }
+          } else {
+            // Handle errors, e.g., show error message
+            document.getElementById("visualizationResult").innerHTML =
+              "Error: " + xhr.statusText;
+          }
+        };
+        xhr.send(data);
+      }
+
+      function getJaxAndTorchFields() {
         const jaxFields = Array.from(
           document.querySelectorAll(".draggable-list")[0].children,
         ).map((li) => {
@@ -64,21 +103,18 @@
           return { path, shape };
         });
 
+        const jaxLength = jaxFields.length;
+        const torchLength = torchFields.length;
+        if (jaxLength !== torchLength) {
+          return {
+            error: "The number of fields in JAX and PyTorch should be the same",
+          };
+        }
+
         console.log({
           jaxFields,
           torchFields,
         });
-
-        const jaxLength = jaxFields.length;
-        const torchLength = torchFields.length;
-
-        if (jaxLength !== torchLength) {
-          Toast.fire({
-            icon: "error",
-            title: "The number of fields in JAX and PyTorch should be the same",
-          });
-          return;
-        }
 
         for (let i = 0; i < jaxLength; i++) {
           if (jaxFields[i].shape !== torchFields[i].shape) {
@@ -86,9 +122,32 @@
               icon: "error",
               title: `${jaxFields[i].path} has shape ${jaxFields[i].shape}, while ${torchFields[i].path} has shape ${torchFields[i].shape}`,
             });
-            return;
+            return { error: "Invalid shapes" };
           }
         }
+
+        return { jaxFields: jaxFields, torchFields: torchFields };
+      }
+      async function convert() {
+        const fields = getJaxAndTorchFields();
+        if (fields.error) {
+          Toast.fire({
+            icon: "error",
+            title: "The number of fields in JAX and PyTorch should be the same",
+          });
+        }
+        const jaxFields = fields.jaxFields;
+        const torchFields = fields.torchFields;
+
+        let idField = document.getElementById("name");
+        if (!idField) {
+          Toast.fire({
+            icon: "error",
+            title: "Error finding the name!",
+          });
+        }
+
+        let name = idField.value;
 
         const response = await fetch("/convert", {
           method: "POST",
@@ -98,6 +157,7 @@
           body: JSON.stringify({
             jaxFields,
             torchFields,
+            name,
           }),
         });
 
@@ -156,10 +216,31 @@
         </ul>
       </div>
     </div>
-    <div class="flex justify-center my-12">
-      <button onclick="convert()" class="btn btn-accent btn-wide btn-lg">
-        Convert!
+    <div class="flex justify-center my-12 w-full">
+      <div class="flex flex-col justify-center w-full">
+        <input
+          id="name"
+          type="text"
+          name="name"
+          class="input input-primary w-full"
+          placeholder="Name of the new file (model.eqx per default)"
+          value="model.eqx"
+        />
+        <button
+          onclick="convert()"
+          class="btn btn-accent btn-wide btn-lg mx-auto my-2"
+        >
+          Convert!
+        </button>
+      </div>
+    </div>
+    <div class="flex justify-center">
+      <button onclick="visualize()" class="btn btn-secondary">
+        Visualize with Penzai!
       </button>
     </div>
+
+    <hr />
+    <div id="visualizationResult"></div>
   </body>
 </html>

@@ -1,13 +1,14 @@
+import functools as ft
 import re
 
 import equinox as eqx
 import fire
-import functools as ft
 import flask
 import jax
 from beartype.typing import Optional
 from jaxtyping import PyTree
 from loguru import logger
+from penzai import pz
 from pydantic import BaseModel
 
 
@@ -80,6 +81,25 @@ def state_dict_to_fields(state_dict: Optional[dict]) -> list[Field]:
     return fields
 
 
+@app.route("/visualize", methods=["POST"])
+def visualize_with_penzai():
+    global PYTREE, STATE_DICT
+    if PYTREE is None or STATE_DICT is None:
+        return flask.jsonify({"error": "No Pytree or StateDict found"})
+    request_data = flask.request.json
+    if request_data is None:
+        return flask.jsonify({"error": "No data received"})
+    jax_fields = request_data["jaxFields"]
+    torch_fields = request_data["torchFields"]
+    model, state = do_conversion(jax_fields, torch_fields)
+    with pz.ts.active_autovisualizer.set_scoped(pz.ts.ArrayAutovisualizer()):
+        html_jax = pz.ts.render_to_html((model, state))
+        html_torch = pz.ts.render_to_html(STATE_DICT)
+
+    combined_html = f"<html><body>{html_jax}<hr>{html_torch}</body></html>"
+    return combined_html
+
+
 @app.route("/convert", methods=["POST"])
 def convert_torch_to_jax():
     global PYTREE, STATE_DICT
@@ -90,44 +110,12 @@ def convert_torch_to_jax():
         return flask.jsonify({"error": "No data received"})
     jax_fields = request_data["jaxFields"]
     torch_fields = request_data["torchFields"]
+    name = request_data["name"]
 
-    identity = lambda *args, **kwargs: PYTREE
-    model, state = eqx.nn.make_with_state(identity)()
-    state_paths = []
-    for jax_field, torch_field in zip(jax_fields, torch_fields):
-        path = jax_field["path"].split(".")[1:]
-        if "StateIndex" in jax_field["type"]:
-            state_paths.append((jax_field, torch_field))
+    model, state = do_conversion(jax_fields, torch_fields)
+    eqx.tree_serialise_leaves(name, (model, state))
 
-        else:
-            where = ft.partial(get_node, targets=path)
-            if where(model) is not None:
-                logger.info(f"Found {jax_field['path']} in PyTree, updating...")
-                model = eqx.tree_at(
-                    where,
-                    model,
-                    STATE_DICT[torch_field["path"]].numpy(),
-                )
-    result = {}
-    for tuple_item in state_paths:
-        path_prefix = tuple_item[0]["path"].split(".")[1:-1]
-        prefix_key = ".".join(path_prefix)
-        if prefix_key not in result:
-            result[prefix_key] = []
-        result[prefix_key].append(tuple_item[1])
-
-    for key in result:
-        state_index = get_node(model, key.split("."))
-        if state_index is not None:
-            to_replace_tuple = tuple(
-                [STATE_DICT[i["path"]].numpy() for i in result[key]]
-            )
-            print(to_replace_tuple)
-            state = state.set(state_index, to_replace_tuple)
-
-    # serialize the result
-
-    return flask.jsonify({"error": "Not implemented yet"})
+    return flask.jsonify({"status": "success"})
 
 
 @app.route("/", methods=["GET"])
@@ -140,10 +128,51 @@ def main():
     )
 
 
+def do_conversion(jax_fields, torch_fields):
+    global PYTREE, STATE_DICT
+    if STATE_DICT is None:
+        raise ValueError("STATE_DICT must not be None!")
+    identity = lambda *args, **kwargs: PYTREE
+    model, state = eqx.nn.make_with_state(identity)()
+    state_paths = []
+    for jax_field, torch_field in zip(jax_fields, torch_fields):
+        path = jax_field["path"].split(".")[1:]
+        if "StateIndex" in jax_field["type"]:
+            state_paths.append((jax_field, torch_field))
+
+        else:
+            where = ft.partial(get_node, targets=path)
+            if where(model) is not None:
+                model = eqx.tree_at(
+                    where,
+                    model,
+                    STATE_DICT[torch_field["path"]],
+                )
+    result = {}
+    for tuple_item in state_paths:
+        path_prefix = tuple_item[0]["path"].split(".")[1:-1]
+        prefix_key = ".".join(path_prefix)
+        if prefix_key not in result:
+            result[prefix_key] = []
+        result[prefix_key].append(tuple_item[1])
+
+    for key in result:
+        state_index = get_node(model, key.split("."))
+        if state_index is not None:
+            to_replace_tuple = tuple([STATE_DICT[i["path"]] for i in result[key]])
+            state = state.set(state_index, to_replace_tuple)
+    return model, state
+
+
 def convert(pytree: PyTree, state_dict: dict):
     global PYTREE, STATE_DICT
+    if state_dict is None:
+        raise ValueError("STATE_DICT must not be None!")
     PYTREE = pytree
     STATE_DICT = state_dict
+
+    for k, v in STATE_DICT.items():
+        STATE_DICT[k] = v.numpy()
     app.run(debug=True, port=5500)
 
 
