@@ -2,7 +2,6 @@ import functools as ft
 import re
 
 import equinox as eqx
-import fire
 import flask
 import jax
 from beartype.typing import Optional
@@ -17,8 +16,15 @@ app = flask.Flask(__name__)
 
 class Field(BaseModel):
     path: str
-    type: str
     shape: tuple[int, ...]
+
+
+class TorchField(Field):
+    pass
+
+
+class JaxField(Field):
+    type: str
 
 
 PYTREE: Optional[PyTree] = None
@@ -52,9 +58,9 @@ def get_node(
         return get_node(subtree, targets[1:])
 
 
-def pytree_to_fields(pytree: PyTree) -> list[Field]:
+def pytree_to_fields(pytree: PyTree) -> list[JaxField]:
     flattened, _ = jax.tree_util.tree_flatten_with_path(pytree)
-    fields: list[Field] = []
+    fields: list[JaxField] = []
     for key_path, value in flattened:
         path = jax.tree_util.keystr(key_path)
         type_path = path.split(".")[1:-1]
@@ -63,21 +69,19 @@ def pytree_to_fields(pytree: PyTree) -> list[Field]:
         node = get_node(pytree, target_path, log_when_not_found=True)
         if node is not None and hasattr(node, "shape") and len(node.shape) > 0:
             fields.append(
-                Field(path=path, type=str(node_type), shape=tuple(node.shape))
+                JaxField(path=path, type=str(node_type), shape=tuple(node.shape))
             )
 
     return fields
 
 
-def state_dict_to_fields(state_dict: Optional[dict]) -> list[Field]:
+def state_dict_to_fields(state_dict: Optional[dict]) -> list[TorchField]:
     if state_dict is None:
         return []
-    fields: list[Field] = []
+    fields: list[TorchField] = []
     for key, value in state_dict.items():
         if hasattr(value, "shape") and len(value.shape) > 0:
-            fields.append(
-                Field(path=key, type=str(type(value)), shape=tuple(value.shape))
-            )
+            fields.append(TorchField(path=key, shape=tuple(value.shape)))
     return fields
 
 
@@ -91,7 +95,7 @@ def visualize_with_penzai():
         return flask.jsonify({"error": "No data received"})
     jax_fields = request_data["jaxFields"]
     torch_fields = request_data["torchFields"]
-    model, state = do_conversion(jax_fields, torch_fields)
+    model, state = convert(jax_fields, torch_fields)
     with pz.ts.active_autovisualizer.set_scoped(pz.ts.ArrayAutovisualizer()):
         html_jax = pz.ts.render_to_html((model, state))
         html_torch = pz.ts.render_to_html(STATE_DICT)
@@ -108,18 +112,32 @@ def convert_torch_to_jax():
     request_data = flask.request.json
     if request_data is None:
         return flask.jsonify({"error": "No data received"})
-    jax_fields = request_data["jaxFields"]
-    torch_fields = request_data["torchFields"]
-    name = request_data["name"]
 
-    model, state = do_conversion(jax_fields, torch_fields)
+    jax_fields_json = request_data["jaxFields"]
+    jax_fields: list[JaxField] = []
+    for f in jax_fields_json:
+        shape_tuple = tuple(
+            [int(i) for i in f["shape"].strip("()").split(",") if len(i) > 0]
+        )
+        jax_fields.append(JaxField(path=f["path"], type=f["type"], shape=shape_tuple))
+
+    torch_fields_json = request_data["torchFields"]
+    torch_fields: list[TorchField] = []
+    for f in torch_fields_json:
+        shape_tuple = tuple(
+            [int(i) for i in f["shape"].strip("()").split(",") if len(i) > 0]
+        )
+        torch_fields.append(TorchField(path=f["path"], shape=shape_tuple))
+
+    name = request_data["name"]
+    model, state = convert(jax_fields, torch_fields)
     eqx.tree_serialise_leaves(name, (model, state))
 
     return flask.jsonify({"status": "success"})
 
 
 @app.route("/", methods=["GET"])
-def main():
+def index():
     pytree_fields = pytree_to_fields(PYTREE)
     return flask.render_template(
         "index.html",
@@ -128,16 +146,16 @@ def main():
     )
 
 
-def do_conversion(jax_fields, torch_fields):
+def convert(jax_fields: list[JaxField], torch_fields: list[TorchField]):
     global PYTREE, STATE_DICT
     if STATE_DICT is None:
         raise ValueError("STATE_DICT must not be None!")
     identity = lambda *args, **kwargs: PYTREE
     model, state = eqx.nn.make_with_state(identity)()
-    state_paths = []
+    state_paths: list[tuple[JaxField, TorchField]] = []
     for jax_field, torch_field in zip(jax_fields, torch_fields):
-        path = jax_field["path"].split(".")[1:]
-        if "StateIndex" in jax_field["type"]:
+        path = jax_field.path.split(".")[1:]
+        if "StateIndex" in jax_field.type:
             state_paths.append((jax_field, torch_field))
 
         else:
@@ -146,11 +164,11 @@ def do_conversion(jax_fields, torch_fields):
                 model = eqx.tree_at(
                     where,
                     model,
-                    STATE_DICT[torch_field["path"]],
+                    STATE_DICT[torch_field.path],
                 )
-    result = {}
+    result: dict[str, list[TorchField]] = {}
     for tuple_item in state_paths:
-        path_prefix = tuple_item[0]["path"].split(".")[1:-1]
+        path_prefix = tuple_item[0].path.split(".")[1:-1]
         prefix_key = ".".join(path_prefix)
         if prefix_key not in result:
             result[prefix_key] = []
@@ -159,12 +177,12 @@ def do_conversion(jax_fields, torch_fields):
     for key in result:
         state_index = get_node(model, key.split("."))
         if state_index is not None:
-            to_replace_tuple = tuple([STATE_DICT[i["path"]] for i in result[key]])
+            to_replace_tuple = tuple([STATE_DICT[i.path] for i in result[key]])
             state = state.set(state_index, to_replace_tuple)
     return model, state
 
 
-def convert(pytree: PyTree, state_dict: dict):
+def start_conversion(pytree: PyTree, state_dict: dict):
     global PYTREE, STATE_DICT
     if state_dict is None:
         raise ValueError("STATE_DICT must not be None!")
@@ -174,11 +192,3 @@ def convert(pytree: PyTree, state_dict: dict):
     for k, v in STATE_DICT.items():
         STATE_DICT[k] = v.numpy()
     app.run(debug=True, port=5500)
-
-
-def start_server(debug: bool = True, port: int = 5500):
-    app.run(debug=debug, port=port)
-
-
-if __name__ == "__main__":
-    fire.Fire(start_server)

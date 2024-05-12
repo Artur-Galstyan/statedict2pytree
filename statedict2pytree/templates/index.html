@@ -77,7 +77,6 @@
               document.head.appendChild(script).parentNode.removeChild(script);
             }
           } else {
-            // Handle errors, e.g., show error message
             document.getElementById("visualizationResult").innerHTML =
               "Error: " + xhr.statusText;
           }
@@ -128,6 +127,7 @@
 
         return { jaxFields: jaxFields, torchFields: torchFields };
       }
+
       async function convert() {
         const fields = getJaxAndTorchFields();
         if (fields.error) {

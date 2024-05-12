@@ -1,6 +1,6 @@
 [project]
-name = "torch2jax"
-version = "0.1.1"
+name = "statedict2pytree"
+version = "0.1.2"
 description = "Converts torch models into PyTrees for Equinox"
 readme = "README.md"
 requires-python = "~=3.10"
@@ -12,7 +12,6 @@ dependencies = [
     "beartype",
     "typing_extensions",
     "loguru",
-    "fire",
     "jaxtyping",
     "torch",
     "flask",
@@ -40,8 +39,8 @@ order-by-type = false
 [tool.pyright]
 reportIncompatibleMethodOverride = true
 reportMissingImports = false
-include = ["torch2jax", "tests"]
-exclude = ["testing_ground"]
+include = ["statedict2pytree", "tests"]
+exclude = ["testing_ground", "examples"]
 
 
 [build-system]
