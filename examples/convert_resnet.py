@@ -1,6 +1,6 @@
 import jax
 import statedict2pytree as s2p
-from tests.resnet import resnet50
+from resnet import resnet50
 from torchvision.models import resnet50 as t_resnet50, ResNet50_Weights
 
 
