@@ -1,6 +1,6 @@
 [project]
 name = "statedict2pytree"
-version = "0.2.0"
+version = "0.3.0"
 description = "Converts torch models into PyTrees for Equinox"
 readme = "README.md"
 requires-python = "~=3.10"
@@ -16,7 +16,7 @@ dependencies = [
     "torch",
     "flask",
     "pydantic",
-    "penzai"
+    "penzai",
 ]
 [project.optional-dependencies]
 dev = ["nox", "pre-commit", "pytest", "mkdocs"]

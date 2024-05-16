@@ -8,6 +8,12 @@ Usually, if you _declared the fields in the same order as in the PyTorch model_,
 
 (Theoretically, you can rearrange the model in any way you like - e.g. last layer as the first layer - as long as the shapes match!)
 
+## Shape Matching? What's that?
+
+Currently, there is no sophisticated shape matching in place. Two matrices are considered "matching" if the product of their shape match. For example:
+
+1. (8, 1, 1) and (8, ) match, because (8 _ 1 _ 1 = 8)
+
 ## Get Started
 
 ### Installation
@@ -100,3 +106,18 @@ def convert(
 ```
 
 If your models already have the right "order", then you might as well use this function directly. Note that the lists `jax_fields` and `torch_fields` must have the same length and each matching entry must have the same shape!
+
+For the full, automatic experience, use `autoconvert`:
+
+```python
+import statedict2pytree as s2p
+
+my_model = Model(...)
+state_dict = ...
+
+model, state = s2p.autoconvert(my_model, state_dict)
+
+```
+
+This will however only work if your PyTree fields have been declared
+in the same order as they appear in the state dict!

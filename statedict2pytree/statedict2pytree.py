@@ -4,6 +4,7 @@ import re
 import equinox as eqx
 import flask
 import jax
+import numpy as np
 from beartype.typing import Optional
 from jaxtyping import PyTree
 from loguru import logger
@@ -29,6 +30,13 @@ class JaxField(Field):
 
 PYTREE: Optional[PyTree] = None
 STATE_DICT: Optional[dict] = None
+
+
+def can_reshape(shape1, shape2):
+    product1 = np.prod(shape1)
+    product2 = np.prod(shape2)
+
+    return product1 == product2
 
 
 def get_node(
@@ -146,17 +154,23 @@ def index():
     )
 
 
+def autoconvert(pytree: PyTree, state_dict: dict) -> tuple[PyTree, eqx.nn.State]:
+    jax_fields = pytree_to_fields(pytree)
+    torch_fields = state_dict_to_fields(state_dict)
+    return convert(jax_fields, torch_fields, pytree, state_dict)
+
+
 def convert(
     jax_fields: list[JaxField],
     torch_fields: list[TorchField],
     pytree: PyTree,
     state_dict: dict,
-):
+) -> tuple[PyTree, eqx.nn.State]:
     identity = lambda *args, **kwargs: pytree
     model, state = eqx.nn.make_with_state(identity)()
     state_paths: list[tuple[JaxField, TorchField]] = []
     for jax_field, torch_field in zip(jax_fields, torch_fields):
-        if jax_field.shape != torch_field.shape:
+        if not can_reshape(jax_field.shape, torch_field.shape):
             raise ValueError(
                 "Fields have incompatible shapes!"
                 f"{jax_field.shape=} != {torch_field.shape=}"
@@ -171,7 +185,7 @@ def convert(
                 model = eqx.tree_at(
                     where,
                     model,
-                    state_dict[torch_field.path],
+                    state_dict[torch_field.path].reshape(jax_field.shape),
                 )
     result: dict[str, list[TorchField]] = {}
     for tuple_item in state_paths:
