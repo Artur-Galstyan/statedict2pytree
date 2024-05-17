@@ -6,15 +6,15 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import torch
+from examples.resnet import resnet152
 from PIL import Image
-from tests.resnet import resnet50
 from torchvision import transforms
-from torchvision.models import resnet50 as t_resnet50, ResNet50_Weights
+from torchvision.models import resnet152 as t_resnet152, ResNet152_Weights
 
 
 def test_resnet():
-    resnet_jax = resnet50(key=jax.random.PRNGKey(33), make_with_state=False)
-    resnet_torch = t_resnet50(weights=ResNet50_Weights.DEFAULT)
+    resnet_jax = resnet152(key=jax.random.PRNGKey(33), make_with_state=False)
+    resnet_torch = t_resnet152(weights=ResNet152_Weights.DEFAULT)
 
     img_name = "doggo.jpeg"
 
@@ -42,7 +42,7 @@ def test_resnet():
     )  # Outputs the ImageNet class index of the prediction
 
     url = "https://storage.googleapis.com/download.tensorflow.org/data/imagenet_class_index.json"
-    with urllib.request.urlopen(url) as url:
+    with urllib.request.urlopen(url) as url:  # pyright: ignore
         imagenet_labels = json.loads(url.read().decode())
 
     label = imagenet_labels[str(predicted.item())][1]
@@ -52,7 +52,7 @@ def test_resnet():
     model_callable = ft.partial(identity, resnet_jax)
     model, state = eqx.nn.make_with_state(model_callable)()
 
-    model, state = eqx.tree_deserialise_leaves("model.eqx", (model, state))
+    model, state = eqx.tree_deserialise_leaves("resnet152.eqx", (model, state))
 
     jax_batch = jnp.array(batch_t.numpy())
     out, state = eqx.filter_vmap(

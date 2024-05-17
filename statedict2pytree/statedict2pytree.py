@@ -46,7 +46,7 @@ def get_node(
         return tree
     else:
         next_target: str = targets[0]
-        if bool(re.search(r"\[\d\]", next_target)):
+        if bool(re.search(r"\[\d+\]", next_target)):
             split_index = next_target.rfind("[")
             name, index = next_target[:split_index], next_target[split_index:]
             index = index[1:-1]
@@ -157,6 +157,9 @@ def index():
 def autoconvert(pytree: PyTree, state_dict: dict) -> tuple[PyTree, eqx.nn.State]:
     jax_fields = pytree_to_fields(pytree)
     torch_fields = state_dict_to_fields(state_dict)
+
+    for k, v in state_dict.items():
+        state_dict[k] = v.numpy()
     return convert(jax_fields, torch_fields, pytree, state_dict)
 
 

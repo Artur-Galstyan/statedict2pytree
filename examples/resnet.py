@@ -333,12 +333,22 @@ def resnet18(
 
 
 def resnet34(
-    image_channels: int = 3, num_classes: int = 1000, *, key: PRNGKeyArray, **kwargs
+    image_channels: int = 3,
+    num_classes: int = 1000,
+    *,
+    key: PRNGKeyArray,
+    make_with_state: bool = True,
+    **kwargs,
 ):
     layers = [3, 4, 6, 3]
-    return eqx.nn.make_with_state(ResNet)(
-        BasicBlock, layers, image_channels, num_classes, **kwargs, key=key
-    )
+    if make_with_state:
+        return eqx.nn.make_with_state(ResNet)(
+            BasicBlock, layers, image_channels, num_classes, **kwargs, key=key
+        )
+    else:
+        return ResNet(
+            BasicBlock, layers, image_channels, num_classes, **kwargs, key=key
+        )
 
 
 def resnet50(
@@ -361,18 +371,39 @@ def resnet50(
 
 
 def resnet101(
-    image_channels: int = 3, num_classes: int = 1000, *, key: PRNGKeyArray, **kwargs
+    image_channels: int = 3,
+    num_classes: int = 1000,
+    *,
+    key: PRNGKeyArray,
+    make_with_state: bool = True,
+    **kwargs,
 ):
     layers = [3, 4, 23, 3]
-    return eqx.nn.make_with_state(ResNet)(
-        Bottleneck, layers, image_channels, num_classes, **kwargs, key=key
-    )
+
+    if make_with_state:
+        return eqx.nn.make_with_state(ResNet)(
+            Bottleneck, layers, image_channels, num_classes, **kwargs, key=key
+        )
+    else:
+        return ResNet(
+            Bottleneck, layers, image_channels, num_classes, **kwargs, key=key
+        )
 
 
 def resnet152(
-    image_channels: int = 3, num_classes: int = 1000, *, key: PRNGKeyArray, **kwargs
+    image_channels: int = 3,
+    num_classes: int = 1000,
+    *,
+    key: PRNGKeyArray,
+    make_with_state: bool = True,
+    **kwargs,
 ):
     layers = [3, 8, 36, 3]
-    return eqx.nn.make_with_state(ResNet)(
-        Bottleneck, layers, image_channels, num_classes, **kwargs, key=key
-    )
+    if make_with_state:
+        return eqx.nn.make_with_state(ResNet)(
+            Bottleneck, layers, image_channels, num_classes, **kwargs, key=key
+        )
+    else:
+        return ResNet(
+            Bottleneck, layers, image_channels, num_classes, **kwargs, key=key
+        )
