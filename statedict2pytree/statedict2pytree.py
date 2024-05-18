@@ -101,8 +101,10 @@ def visualize_with_penzai():
     request_data = flask.request.json
     if request_data is None:
         return flask.jsonify({"error": "No data received"})
-    jax_fields = request_data["jaxFields"]
-    torch_fields = request_data["torchFields"]
+
+    jax_fields, torch_fields = field_jsons_to_fields(
+        request_data["jaxFields"], request_data["torchFields"]
+    )
     model, state = convert(jax_fields, torch_fields, PYTREE, STATE_DICT)
     with pz.ts.active_autovisualizer.set_scoped(pz.ts.ArrayAutovisualizer()):
         html_jax = pz.ts.render_to_html((model, state))
@@ -121,21 +123,9 @@ def convert_torch_to_jax():
     if request_data is None:
         return flask.jsonify({"error": "No data received"})
 
-    jax_fields_json = request_data["jaxFields"]
-    jax_fields: list[JaxField] = []
-    for f in jax_fields_json:
-        shape_tuple = tuple(
-            [int(i) for i in f["shape"].strip("()").split(",") if len(i) > 0]
-        )
-        jax_fields.append(JaxField(path=f["path"], type=f["type"], shape=shape_tuple))
-
-    torch_fields_json = request_data["torchFields"]
-    torch_fields: list[TorchField] = []
-    for f in torch_fields_json:
-        shape_tuple = tuple(
-            [int(i) for i in f["shape"].strip("()").split(",") if len(i) > 0]
-        )
-        torch_fields.append(TorchField(path=f["path"], shape=shape_tuple))
+    jax_fields, torch_fields = field_jsons_to_fields(
+        request_data["jaxFields"], request_data["torchFields"]
+    )
 
     name = request_data["name"]
     model, state = convert(jax_fields, torch_fields, PYTREE, STATE_DICT)
@@ -217,3 +207,22 @@ def start_conversion(pytree: PyTree, state_dict: dict):
         STATE_DICT[k] = v.numpy()
     app.jinja_env.globals.update(enumerate=enumerate)
     app.run(debug=True, port=5500)
+
+
+def field_jsons_to_fields(
+    jax_fields_json, torch_fields_json
+) -> tuple[list[JaxField], list[TorchField]]:
+    jax_fields: list[JaxField] = []
+    for f in jax_fields_json:
+        shape_tuple = tuple(
+            [int(i) for i in f["shape"].strip("()").split(",") if len(i) > 0]
+        )
+        jax_fields.append(JaxField(path=f["path"], type=f["type"], shape=shape_tuple))
+
+    torch_fields: list[TorchField] = []
+    for f in torch_fields_json:
+        shape_tuple = tuple(
+            [int(i) for i in f["shape"].strip("()").split(",") if len(i) > 0]
+        )
+        torch_fields.append(TorchField(path=f["path"], shape=shape_tuple))
+    return jax_fields, torch_fields
