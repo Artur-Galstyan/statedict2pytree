@@ -1,7 +1,6 @@
 {
   "scripts": {
-    "dev": "python3 torch2jax/torch2jax.py --debug=True",
-    "watch": "npx tailwindcss -i ./torch2jax/static/input.css -o ./torch2jax/static/output.css --watch"
+    "watch": "npx tailwindcss -i ./statedict2pytree/static/input.css -o ./statedict2pytree/static/output.css --watch"
   },
   "devDependencies": {
     "daisyui": "^4.11.1",

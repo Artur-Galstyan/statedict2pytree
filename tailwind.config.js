@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./torch2jax/**/*.{html,js}"],
+  content: ["./statedict2pytree/**/*.{html,js}"],
   theme: {
     extend: {},
   },

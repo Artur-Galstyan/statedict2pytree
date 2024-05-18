@@ -55,7 +55,3 @@ def test_conv():
             np.array(model.conv.bias),
             torch_model.conv.bias.detach().numpy().reshape(model.conv.bias.shape),
         )
-
-
-if __name__ == "__main__":
-    test_conv()

@@ -11,26 +11,73 @@
       href="{{ url_for('static', filename='output.css') }}"
     />
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script type="module">
-      import {
-        Draggable,
-        Sortable,
-        Droppable,
-        Swappable,
-        Plugins,
-      } from "https://cdn.jsdelivr.net/npm/@shopify/draggable/build/esm/index.mjs";
-      const sortableLists = document.querySelectorAll(".draggable-list");
+      let jaxSortable = new Sortable(document.getElementById("jax-fields"), {
+        animation: 150,
+        ghostClass: "blue-background-class",
+      });
 
-      for (const sortableList of sortableLists) {
-        const sortable = new Sortable(sortableList, {
-          draggable: "li",
-          plugins: [Plugins.SortAnimation],
-          swapAnimation: {
-            duration: 200,
-            easingFunction: "ease-in-out",
+      let torchSortable = new Sortable(
+        document.getElementById("torch-fields"),
+        {
+          animation: 150,
+          ghostClass: "bg-blue-400",
+          onEnd: function (evt) {
+            document.getElementById("error-field").classList.add("hidden");
+            let allJaxFields = document.querySelectorAll("#jax-fields > div");
+            let allTorchFields = document.querySelectorAll(
+              "#torch-fields > div",
+            );
+            if (allJaxFields.length !== allTorchFields.length) {
+              Swal.fire({
+                icon: "error",
+                title:
+                  "The number of fields in JAX and PyTorch should be the same",
+              });
+            } else {
+              for (let i = 0; i < allJaxFields.length; i++) {
+                let jaxField = allJaxFields[i];
+                let torchField = allTorchFields[i];
+                let jaxShape = jaxField.getAttribute("data-shape");
+                let torchShape = torchField.getAttribute("data-shape");
+
+                jaxShape = jaxShape
+                  .replace("(", "")
+                  .replace(")", "")
+                  .replace(/\s+/g, "")
+                  .replace(/,\s*$/, "");
+
+                torchShape = torchShape
+                  .replace("(", "")
+                  .replace(")", "")
+                  .replace(/\s+/g, "")
+                  .replace(/,\s*$/, "");
+
+                let jaxShapeParts = jaxShape.split(",").map((x) => parseInt(x));
+                let torchShapeParts = torchShape
+                  .split(",")
+                  .map((x) => parseInt(x));
+                let jaxShapeProduct = jaxShapeParts.reduce((a, b) => a * b, 1);
+                let torchShapeProduct = torchShapeParts.reduce(
+                  (a, b) => a * b,
+                  1,
+                );
+
+                let jaxEl = jaxField;
+                let torchEl = torchField;
+                if (jaxShapeProduct !== torchShapeProduct) {
+                  jaxEl.classList.add("bg-error");
+                  torchEl.classList.add("bg-error");
+                } else {
+                  jaxEl.classList.remove("bg-error");
+                  torchEl.classList.remove("bg-error");
+                }
+              }
+            }
           },
-        });
-      }
+        },
+      );
     </script>
   </head>
   <body class="w-10/12 mx-auto">
@@ -66,10 +113,8 @@
         xhr.setRequestHeader("Content-Type", "application/json");
         xhr.onload = function () {
           if (xhr.status >= 200 && xhr.status < 300) {
-            // Successfully received response
             var container = document.getElementById("visualizationResult");
             container.innerHTML = xhr.responseText;
-            // Execute any scripts that were in the response
             var scripts = container.getElementsByTagName("script");
             for (var i = 0; i < scripts.length; i++) {
               var script = document.createElement("script");
@@ -86,7 +131,7 @@
 
       function getJaxAndTorchFields() {
         const jaxFields = Array.from(
-          document.querySelectorAll(".draggable-list")[0].children,
+          document.querySelectorAll("#jax-fields")[0].children,
         ).map((li) => {
           const path = li.getAttribute("data-path");
           const shape = li.getAttribute("data-shape");
@@ -95,7 +140,7 @@
         });
 
         const torchFields = Array.from(
-          document.querySelectorAll(".draggable-list")[1].children,
+          document.querySelectorAll("#torch-fields")[0].children,
         ).map((li) => {
           const path = li.getAttribute("data-path");
           const shape = li.getAttribute("data-shape");
@@ -121,6 +166,11 @@
               icon: "error",
               title: `${jaxFields[i].path} has shape ${jaxFields[i].shape}, while ${torchFields[i].path} has shape ${torchFields[i].shape}`,
             });
+            document.getElementById("error-field").classList.remove("hidden");
+            document
+              .getElementById("error-field")
+              .querySelector("span").innerText =
+              `${jaxFields[i].path} has shape ${jaxFields[i].shape}, while ${torchFields[i].path} has shape ${torchFields[i].shape}`;
             return { error: "Invalid shapes" };
           }
         }
@@ -133,7 +183,8 @@
         if (fields.error) {
           Toast.fire({
             icon: "error",
-            title: "The number of fields in JAX and PyTorch should be the same",
+            title: "Failed to convert!",
+            text: fields.error,
           });
         }
         const jaxFields = fields.jaxFields;
@@ -178,42 +229,36 @@
     </script>
     <h1 class="text-3xl my-12">Welcome to Torch2Jax</h1>
 
-    <div class="flex space-x-4">
-      <div class="w-full">
+    <div class="grid grid-cols-2 gap-x-2">
+      <div class="">
         <h2 class="text-2xl">JAX</h2>
-        <ul class="draggable-list menu bg-base-200 rounded-box">
+        <div id="jax-fields" class="bg-base-200">
           {% for field in pytree_fields %}
-          <li
-            draggable="true"
+          <div
             data-path="{{field.path}}"
             data-shape="{{field.shape}}"
             data-type="{{field.type}}"
+            class="whitespace-nowrap overflow-x-scroll cursor-pointer"
           >
-            <p
-              class="tooltip text-left"
-              data-path="{{field.path}}"
-              data-tip="{{field.type}}"
-            >
-              {{ field.path}} {{field.shape }}
-            </p>
-          </li>
+            {{ field.path }} {{ field.shape }}
+          </div>
           {% endfor %}
-        </ul>
+        </div>
       </div>
 
-      <div class="w-full">
+      <div class="">
         <h2 class="text-2xl">PyTorch</h2>
-        <ul class="draggable-list menu bg-base-200 rounded-box w-full">
+        <div id="torch-fields" class="bg-base-200">
           {% for field in torch_fields %}
-          <li
-            draggable="true"
+          <div
             data-path="{{field.path}}"
             data-shape="{{field.shape}}"
+            class="whitespace-nowrap overflow-x-scroll cursor-pointer"
           >
-            <p class="text-left">{{ field.path }} {{ field.shape }}</p>
-          </li>
+            {{ field.path }} {{ field.shape }}
+          </div>
           {% endfor %}
-        </ul>
+        </div>
       </div>
     </div>
     <div class="flex justify-center my-12 w-full">
@@ -234,6 +279,23 @@
         </button>
       </div>
     </div>
+    <div role="alert" class="alert alert-error hidden" id="error-field">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="stroke-current shrink-0 h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+      <span></span>
+    </div>
+
     <div class="flex justify-center">
       <button onclick="visualize()" class="btn btn-secondary">
         Visualize with Penzai!

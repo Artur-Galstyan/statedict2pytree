@@ -215,4 +215,5 @@ def start_conversion(pytree: PyTree, state_dict: dict):
 
     for k, v in STATE_DICT.items():
         STATE_DICT[k] = v.numpy()
+    app.jinja_env.globals.update(enumerate=enumerate)
     app.run(debug=True, port=5500)
