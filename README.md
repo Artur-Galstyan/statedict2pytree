@@ -4,8 +4,10 @@
 
 ## Important
 
-This package is still in its infancy! The code works, but it's far from perfect. With more and more iterations, it will eventually become stable and well tested. 
+This package is still in its infancy and hihgly experimental! The code works, but it's far from perfect. With more and more iterations, it will eventually become stable and well tested. 
 PRs and other contributions are *highly* welcome! :) 
+
+## Info
 
 The goal of this package is to simplify the conversion from PyTorch models into JAX PyTrees (which can be used e.g. in Equinox). The way this works is by putting both models side my side and aligning the weights in the right order. Then, all statedict2pytree is doing, is iterating over both lists and matching the weight matrices.
 
