@@ -20,6 +20,7 @@ dependencies = [
 ]
 [project.optional-dependencies]
 dev = ["nox", "pre-commit", "pytest", "mkdocs"]
+examples = ["jaxonmodels"]
 
 [tool.ruff]
 extend-include = ["*.ipynb"]
@@ -27,7 +28,7 @@ src = []
 
 [tool.ruff.lint]
 fixable = ["I001", "F401"]
-ignore = ["E402", "E721", "E731", "E741", "F722"]
+ignore = ["E402", "E721", "E731", "E741", "F722", "F841", "F821"]
 ignore-init-module-imports = true
 select = ["E", "F", "I001"]
 
@@ -40,8 +41,8 @@ order-by-type = false
 [tool.pyright]
 reportIncompatibleMethodOverride = true
 reportMissingImports = false
-include = ["statedict2pytree", "tests"]
-exclude = ["testing_ground", "examples"]
+include = ["statedict2pytree", "tests", "examples"]
+exclude = ["testing_ground"]
 
 
 [build-system]
