@@ -1,100 +1,34 @@
 import functools as ft
-import re
+import os
+import pathlib
+import pickle
 
 import equinox as eqx
 import flask
-import jax
 import numpy as np
-from beartype.typing import Optional
+import torch
+from beartype.typing import Literal, Optional
 from jaxtyping import PyTree
-from loguru import logger
 from penzai import pz
-from pydantic import BaseModel
+
+from statedict2pytree.utils.pydantic_models import JaxField, TorchField
+from statedict2pytree.utils.utils import can_reshape, field_jsons_to_fields
+from statedict2pytree.utils.utils_pytree import get_node, pytree_to_fields
+from statedict2pytree.utils.utils_state_dict import state_dict_to_fields
 
 
 app = flask.Flask(__name__)
 
 
-class Field(BaseModel):
-    path: str
-    shape: tuple[int, ...]
-
-
-class TorchField(Field):
-    pass
-
-
-class JaxField(Field):
-    type: str
-
-
 PYTREE: Optional[PyTree] = None
-STATE_DICT: Optional[dict] = None
+PYTREE_PATH: Optional[str] = None
 
-
-def can_reshape(shape1, shape2):
-    product1 = np.prod(shape1)
-    product2 = np.prod(shape2)
-
-    return product1 == product2
-
-
-def get_node(
-    tree: PyTree, targets: list[str], log_when_not_found: bool = False
-) -> PyTree | None:
-    if len(targets) == 0 or tree is None:
-        return tree
-    else:
-        next_target: str = targets[0]
-        if bool(re.search(r"\[\d+\]", next_target)):
-            split_index = next_target.rfind("[")
-            name, index = next_target[:split_index], next_target[split_index:]
-            index = index[1:-1]
-            if hasattr(tree, name):
-                subtree = getattr(tree, name)[int(index)]
-            else:
-                subtree = None
-                if log_when_not_found:
-                    logger.info(f"Couldn't find  {name} in {tree.__class__}")
-        else:
-            if hasattr(tree, next_target):
-                subtree = getattr(tree, next_target)
-            else:
-                subtree = None
-                if log_when_not_found:
-                    logger.info(f"Couldn't find  {next_target} in {tree.__class__}")
-        return get_node(subtree, targets[1:])
-
-
-def pytree_to_fields(pytree: PyTree) -> list[JaxField]:
-    flattened, _ = jax.tree_util.tree_flatten_with_path(pytree)
-    fields: list[JaxField] = []
-    for key_path, value in flattened:
-        path = jax.tree_util.keystr(key_path)
-        type_path = path.split(".")[1:-1]
-        target_path = path.split(".")[1:]
-        node_type = type(get_node(pytree, type_path, log_when_not_found=True))
-        node = get_node(pytree, target_path, log_when_not_found=True)
-        if node is not None and hasattr(node, "shape") and len(node.shape) > 0:
-            fields.append(
-                JaxField(path=path, type=str(node_type), shape=tuple(node.shape))
-            )
-
-    return fields
-
-
-def state_dict_to_fields(state_dict: Optional[dict]) -> list[TorchField]:
-    if state_dict is None:
-        return []
-    fields: list[TorchField] = []
-    for key, value in state_dict.items():
-        if hasattr(value, "shape") and len(value.shape) > 0:
-            fields.append(TorchField(path=key, shape=tuple(value.shape)))
-    return fields
+STATE_DICT: Optional[dict[str, np.ndarray]] = None
+STATE_DICT_PATH: Optional[str] = None
 
 
 @app.route("/visualize", methods=["POST"])
-def visualize_with_penzai():
+def _visualize_with_penzai():
     global PYTREE, STATE_DICT
     if PYTREE is None or STATE_DICT is None:
         return flask.jsonify({"error": "No Pytree or StateDict found"})
@@ -105,7 +39,9 @@ def visualize_with_penzai():
     jax_fields, torch_fields = field_jsons_to_fields(
         request_data["jaxFields"], request_data["torchFields"]
     )
-    model, state = convert(jax_fields, torch_fields, PYTREE, STATE_DICT)
+    model, state = convert_from_pytree_and_state_dict(
+        jax_fields, torch_fields, PYTREE, STATE_DICT
+    )
     with pz.ts.active_autovisualizer.set_scoped(pz.ts.ArrayAutovisualizer()):
         html_jax = pz.ts.render_to_html((model, state))
         html_torch = pz.ts.render_to_html(STATE_DICT)
@@ -115,9 +51,25 @@ def visualize_with_penzai():
 
 
 @app.route("/convert", methods=["POST"])
-def convert_torch_to_jax():
+def _convert_torch_to_jax():
     global PYTREE, STATE_DICT
-    if PYTREE is None or STATE_DICT is None:
+    global PYTREE_PATH, STATE_DICT_PATH
+    mode: Optional[Literal["FROM_PATH", "FROM_MEMORY"]] = None
+    if (
+        PYTREE is None
+        and STATE_DICT is None
+        and PYTREE_PATH is not None
+        and STATE_DICT_PATH is not None
+    ):
+        mode = "FROM_PATH"
+    elif (
+        PYTREE is not None
+        and STATE_DICT is not None
+        and STATE_DICT_PATH is None
+        and PYTREE_PATH is None
+    ):
+        mode = "FROM_MEMORY"
+    else:
         return flask.jsonify({"error": "No Pytree or StateDict found"})
     request_data = flask.request.json
     if request_data is None:
@@ -128,36 +80,97 @@ def convert_torch_to_jax():
     )
 
     name = request_data["name"]
-    model, state = convert(jax_fields, torch_fields, PYTREE, STATE_DICT)
-    eqx.tree_serialise_leaves(name, (model, state))
 
+    if mode == "FROM_MEMORY":
+        if STATE_DICT is None or PYTREE is None:
+            raise ValueError("STATE_DICT or PYTREE is None")
+        model, state = convert_from_pytree_and_state_dict(
+            jax_fields, torch_fields, PYTREE, STATE_DICT
+        )
+        eqx.tree_serialise_leaves(name, (model, state))
+    else:
+        if STATE_DICT_PATH is None or PYTREE_PATH is None:
+            raise ValueError("STATE_DICT_PATH or PYTREE_PATH is None")
+        convert_from_path(jax_fields, torch_fields, PYTREE_PATH, STATE_DICT_PATH)
     return flask.jsonify({"status": "success"})
 
 
 @app.route("/", methods=["GET"])
 def index():
-    pytree_fields = pytree_to_fields(PYTREE)
+    if PYTREE is None:
+        if PYTREE_PATH is None:
+            raise ValueError("PYTREE is None AND PYTREE_PATH was not provided!")
+        with open(str(pathlib.Path(PYTREE_PATH) / "jax_fields.pkl"), "rb") as f:
+            jax_fields = pickle.load(f)
+    else:
+        jax_fields = pytree_to_fields(PYTREE)
+
+    if STATE_DICT is None:
+        if STATE_DICT_PATH is None:
+            raise ValueError("STATE_DICT None AND STATE_DICT_PATH was not provided!")
+        with open(str(pathlib.Path(STATE_DICT_PATH) / "torch_fields.pkl"), "rb") as f:
+            torch_fields = pickle.load(f)
+    else:
+        torch_fields = state_dict_to_fields(STATE_DICT)
+
     return flask.render_template(
-        "index.html",
-        pytree_fields=pytree_fields,
-        torch_fields=state_dict_to_fields(STATE_DICT),
+        "index.html", pytree_fields=jax_fields, torch_fields=torch_fields
     )
 
 
-def autoconvert(pytree: PyTree, state_dict: dict) -> tuple[PyTree, eqx.nn.State]:
+def autoconvert_state_dict_to_pytree(
+    pytree: PyTree, state_dict: dict
+) -> tuple[PyTree, eqx.nn.State]:
     jax_fields = pytree_to_fields(pytree)
     torch_fields = state_dict_to_fields(state_dict)
 
     for k, v in state_dict.items():
         state_dict[k] = v.numpy()
-    return convert(jax_fields, torch_fields, pytree, state_dict)
+    return convert_from_pytree_and_state_dict(
+        jax_fields, torch_fields, pytree, state_dict
+    )
 
 
-def convert(
+def autoconvert_from_paths(
+    pytree_path: str,
+    state_dict_path: str,
+):
+    with open(str(pathlib.Path(pytree_path) / "jax_fields.pkl"), "rb") as f:
+        jax_fields = pickle.load(f)
+
+    with open(str(pathlib.Path(state_dict_path) / "torch_fields.pkl"), "rb") as f:
+        torch_fields = pickle.load(f)
+    convert_from_path(jax_fields, torch_fields, pytree_path, state_dict_path)
+
+
+def convert_from_path(
+    jax_fields: list[JaxField],
+    torch_fields: list[TorchField],
+    pytree_path: str,
+    state_dict_path: str,
+):
+    j_path = pathlib.Path(pytree_path)
+    t_path = pathlib.Path(state_dict_path)
+
+    for jax_field, torch_field in zip(jax_fields, torch_fields):
+        if not can_reshape(jax_field.shape, torch_field.shape):
+            raise ValueError(
+                "Fields have incompatible shapes!"
+                f"{jax_field.shape=} != {torch_field.shape=}"
+            )
+        pt_path = pathlib.Path(j_path) / "pytree" / jax_field.path
+        sd_path = pathlib.Path(t_path) / "state_dict" / torch_field.path
+
+        if pt_path.exists():
+            os.remove(pt_path)
+        np.save(pt_path, np.load(str(sd_path) + ".npy"))
+
+
+def convert_from_pytree_and_state_dict(
     jax_fields: list[JaxField],
     torch_fields: list[TorchField],
     pytree: PyTree,
-    state_dict: dict,
+    state_dict: dict[str, np.ndarray],
 ) -> tuple[PyTree, eqx.nn.State]:
     identity = lambda *args, **kwargs: pytree
     model, state = eqx.nn.make_with_state(identity)()
@@ -196,33 +209,26 @@ def convert(
     return model, state
 
 
-def start_conversion(pytree: PyTree, state_dict: dict):
-    global PYTREE, STATE_DICT
-    if state_dict is None:
-        raise ValueError("STATE_DICT must not be None!")
-    PYTREE = pytree
-    STATE_DICT = state_dict
+def start_conversion_from_paths(pytree_path: str, state_dict_path: str):
+    global PYTREE_PATH, STATE_DICT_PATH
+    PYTREE_PATH = pytree_path
+    STATE_DICT_PATH = state_dict_path
 
-    for k, v in STATE_DICT.items():
+    run_server()
+
+
+def start_conversion_from_pytree_and_state_dict(
+    pytree: PyTree, state_dict: dict[str, torch.Tensor]
+):
+    global PYTREE, STATE_DICT
+    PYTREE = pytree
+    STATE_DICT = dict()
+
+    for k, v in state_dict.items():
         STATE_DICT[k] = v.numpy()
+    run_server()
+
+
+def run_server():
     app.jinja_env.globals.update(enumerate=enumerate)
     app.run(debug=True, port=5500)
-
-
-def field_jsons_to_fields(
-    jax_fields_json, torch_fields_json
-) -> tuple[list[JaxField], list[TorchField]]:
-    jax_fields: list[JaxField] = []
-    for f in jax_fields_json:
-        shape_tuple = tuple(
-            [int(i) for i in f["shape"].strip("()").split(",") if len(i) > 0]
-        )
-        jax_fields.append(JaxField(path=f["path"], type=f["type"], shape=shape_tuple))
-
-    torch_fields: list[TorchField] = []
-    for f in torch_fields_json:
-        shape_tuple = tuple(
-            [int(i) for i in f["shape"].strip("()").split(",") if len(i) > 0]
-        )
-        torch_fields.append(TorchField(path=f["path"], shape=shape_tuple))
-    return jax_fields, torch_fields

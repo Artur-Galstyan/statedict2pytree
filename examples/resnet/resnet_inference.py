@@ -6,15 +6,15 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import torch
-from examples.resnet import resnet18
+from examples.resnet.resnet import resnet50
 from PIL import Image
 from torchvision import transforms
-from torchvision.models import resnet18 as t_resnet18, ResNet18_Weights
+from torchvision.models import resnet50 as t_resnet50, ResNet50_Weights
 
 
 def test_resnet():
-    resnet_jax = resnet18(key=jax.random.PRNGKey(33), make_with_state=False)
-    resnet_torch = t_resnet18(weights=ResNet18_Weights.DEFAULT)
+    resnet_jax = resnet50(key=jax.random.PRNGKey(33), make_with_state=False)
+    resnet_torch = t_resnet50(weights=ResNet50_Weights.DEFAULT)
 
     img_name = "doggo.jpeg"
 

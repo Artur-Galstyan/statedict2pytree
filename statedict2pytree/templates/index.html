@@ -1,308 +1,318 @@
 <!doctype html>
 <html lang="en" data-theme="light">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>Torch2Jax</title>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+        <title>Torch2Jax</title>
 
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='output.css') }}"
-    />
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-    <script type="module">
-      let jaxSortable = new Sortable(document.getElementById("jax-fields"), {
-        animation: 150,
-        ghostClass: "blue-background-class",
-      });
-
-      let torchSortable = new Sortable(
-        document.getElementById("torch-fields"),
-        {
-          animation: 150,
-          ghostClass: "bg-blue-400",
-          onEnd: function (evt) {
-            document.getElementById("error-field").classList.add("hidden");
-            let allJaxFields = document.querySelectorAll("#jax-fields > div");
-            let allTorchFields = document.querySelectorAll(
-              "#torch-fields > div",
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='output.css') }}"
+        />
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+        <script type="module">
+            let jaxSortable = new Sortable(
+                document.getElementById("jax-fields"),
+                {
+                    animation: 150,
+                    ghostClass: "blue-background-class",
+                },
             );
-            if (allJaxFields.length !== allTorchFields.length) {
-              Swal.fire({
-                icon: "error",
-                title:
-                  "The number of fields in JAX and PyTorch should be the same",
-              });
-            } else {
-              for (let i = 0; i < allJaxFields.length; i++) {
-                let jaxField = allJaxFields[i];
-                let torchField = allTorchFields[i];
-                let jaxShape = jaxField.getAttribute("data-shape");
-                let torchShape = torchField.getAttribute("data-shape");
 
-                jaxShape = jaxShape
-                  .replace("(", "")
-                  .replace(")", "")
-                  .replace(/\s+/g, "")
-                  .replace(/,\s*$/, "");
+            let torchSortable = new Sortable(
+                document.getElementById("torch-fields"),
+                {
+                    animation: 150,
+                    ghostClass: "bg-blue-400",
+                    onEnd: function (evt) {
+                        document
+                            .getElementById("error-field")
+                            .classList.add("hidden");
+                        let allJaxFields =
+                            document.querySelectorAll("#jax-fields > div");
+                        let allTorchFields = document.querySelectorAll(
+                            "#torch-fields > div",
+                        );
+                        let shorterArrayLength =
+                            allJaxFields.length <= allTorchFields.length
+                                ? allJaxFields.length
+                                : allTorchFields.length;
+                        for (let i = 0; i < shorterArrayLength; i++) {
+                            let jaxField = allJaxFields[i];
+                            let torchField = allTorchFields[i];
+                            let jaxShape = jaxField.getAttribute("data-shape");
+                            let torchShape =
+                                torchField.getAttribute("data-shape");
 
-                torchShape = torchShape
-                  .replace("(", "")
-                  .replace(")", "")
-                  .replace(/\s+/g, "")
-                  .replace(/,\s*$/, "");
+                            jaxShape = jaxShape
+                                .replace("(", "")
+                                .replace(")", "")
+                                .replace(/\s+/g, "")
+                                .replace(/,\s*$/, "");
 
-                let jaxShapeParts = jaxShape.split(",").map((x) => parseInt(x));
-                let torchShapeParts = torchShape
-                  .split(",")
-                  .map((x) => parseInt(x));
-                let jaxShapeProduct = jaxShapeParts.reduce((a, b) => a * b, 1);
-                let torchShapeProduct = torchShapeParts.reduce(
-                  (a, b) => a * b,
-                  1,
-                );
+                            torchShape = torchShape
+                                .replace("(", "")
+                                .replace(")", "")
+                                .replace(/\s+/g, "")
+                                .replace(/,\s*$/, "");
 
-                let jaxEl = jaxField;
-                let torchEl = torchField;
-                if (jaxShapeProduct !== torchShapeProduct) {
-                  jaxEl.classList.add("bg-error");
-                  torchEl.classList.add("bg-error");
-                } else {
-                  jaxEl.classList.remove("bg-error");
-                  torchEl.classList.remove("bg-error");
-                }
-              }
-            }
-          },
-        },
-      );
-    </script>
-  </head>
-  <body class="w-10/12 mx-auto">
-    <script>
-      const Toast = Swal.mixin({
-        toast: true,
-        position: "top-end",
-        showConfirmButton: false,
-        timer: 5000,
-        timerProgressBar: true,
-        didOpen: (toast) => {
-          toast.onmouseenter = Swal.stopTimer;
-          toast.onmouseleave = Swal.resumeTimer;
-        },
-      });
+                            let jaxShapeParts = jaxShape
+                                .split(",")
+                                .map((x) => parseInt(x));
+                            let torchShapeParts = torchShape
+                                .split(",")
+                                .map((x) => parseInt(x));
+                            let jaxShapeProduct = jaxShapeParts.reduce(
+                                (a, b) => a * b,
+                                1,
+                            );
+                            let torchShapeProduct = torchShapeParts.reduce(
+                                (a, b) => a * b,
+                                1,
+                            );
 
-      async function visualize() {
-        const fields = getJaxAndTorchFields();
-        if (fields.error) {
-          Toast.fire({
-            icon: "error",
-            title: "The number of fields in JAX and PyTorch should be the same",
-          });
-        }
-        const jaxFields = fields.jaxFields;
-        const torchFields = fields.torchFields;
-        var data = JSON.stringify({
-          jaxFields: jaxFields,
-          torchFields: torchFields,
-        });
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", "/visualize", true);
-        xhr.setRequestHeader("Content-Type", "application/json");
-        xhr.onload = function () {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            var container = document.getElementById("visualizationResult");
-            container.innerHTML = xhr.responseText;
-            var scripts = container.getElementsByTagName("script");
-            for (var i = 0; i < scripts.length; i++) {
-              var script = document.createElement("script");
-              script.text = scripts[i].text;
-              document.head.appendChild(script).parentNode.removeChild(script);
-            }
-          } else {
-            document.getElementById("visualizationResult").innerHTML =
-              "Error: " + xhr.statusText;
-          }
-        };
-        xhr.send(data);
-      }
-
-      function getJaxAndTorchFields() {
-        const jaxFields = Array.from(
-          document.querySelectorAll("#jax-fields")[0].children,
-        ).map((li) => {
-          const path = li.getAttribute("data-path");
-          const shape = li.getAttribute("data-shape");
-          const type = li.getAttribute("data-type");
-          return { path, shape, type };
-        });
-
-        const torchFields = Array.from(
-          document.querySelectorAll("#torch-fields")[0].children,
-        ).map((li) => {
-          const path = li.getAttribute("data-path");
-          const shape = li.getAttribute("data-shape");
-          return { path, shape };
-        });
-
-        const jaxLength = jaxFields.length;
-        const torchLength = torchFields.length;
-        if (jaxLength !== torchLength) {
-          return {
-            error: "The number of fields in JAX and PyTorch should be the same",
-          };
-        }
-
-        console.log({
-          jaxFields,
-          torchFields,
-        });
-
-        for (let i = 0; i < jaxLength; i++) {
-          if (jaxFields[i].shape !== torchFields[i].shape) {
-            Toast.fire({
-              icon: "error",
-              title: `${jaxFields[i].path} has shape ${jaxFields[i].shape}, while ${torchFields[i].path} has shape ${torchFields[i].shape}`,
+                            let jaxEl = jaxField;
+                            let torchEl = torchField;
+                            if (jaxShapeProduct !== torchShapeProduct) {
+                                jaxEl.classList.add("bg-error");
+                                torchEl.classList.add("bg-error");
+                            } else {
+                                jaxEl.classList.remove("bg-error");
+                                torchEl.classList.remove("bg-error");
+                            }
+                        }
+                    },
+                },
+            );
+        </script>
+    </head>
+    <body class="w-10/12 mx-auto">
+        <script>
+            const Toast = Swal.mixin({
+                toast: true,
+                position: "top-end",
+                showConfirmButton: false,
+                timer: 5000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.onmouseenter = Swal.stopTimer;
+                    toast.onmouseleave = Swal.resumeTimer;
+                },
             });
-            document.getElementById("error-field").classList.remove("hidden");
-            document
-              .getElementById("error-field")
-              .querySelector("span").innerText =
-              `${jaxFields[i].path} has shape ${jaxFields[i].shape}, while ${torchFields[i].path} has shape ${torchFields[i].shape}`;
-            return { error: "Invalid shapes" };
-          }
-        }
 
-        return { jaxFields: jaxFields, torchFields: torchFields };
-      }
+            async function visualize() {
+                const fields = getJaxAndTorchFields();
+                if (fields.error) {
+                    Toast.fire({
+                        icon: "error",
+                        title: "The number of fields in JAX and PyTorch should be the same",
+                    });
+                }
+                const jaxFields = fields.jaxFields;
+                const torchFields = fields.torchFields;
+                var data = JSON.stringify({
+                    jaxFields: jaxFields,
+                    torchFields: torchFields,
+                });
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "/visualize", true);
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.onload = function () {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        var container = document.getElementById(
+                            "visualizationResult",
+                        );
+                        container.innerHTML = xhr.responseText;
+                        var scripts = container.getElementsByTagName("script");
+                        for (var i = 0; i < scripts.length; i++) {
+                            var script = document.createElement("script");
+                            script.text = scripts[i].text;
+                            document.head
+                                .appendChild(script)
+                                .parentNode.removeChild(script);
+                        }
+                    } else {
+                        document.getElementById(
+                            "visualizationResult",
+                        ).innerHTML = "Error: " + xhr.statusText;
+                    }
+                };
+                xhr.send(data);
+            }
 
-      async function convert() {
-        const fields = getJaxAndTorchFields();
-        if (fields.error) {
-          Toast.fire({
-            icon: "error",
-            title: "Failed to convert!",
-            text: fields.error,
-          });
-        }
-        const jaxFields = fields.jaxFields;
-        const torchFields = fields.torchFields;
+            function getJaxAndTorchFields() {
+                const jaxFields = Array.from(
+                    document.querySelectorAll("#jax-fields")[0].children,
+                ).map((li) => {
+                    const path = li.getAttribute("data-path");
+                    const shape = li.getAttribute("data-shape");
+                    const type = li.getAttribute("data-type");
+                    return { path, shape, type };
+                });
 
-        let idField = document.getElementById("name");
-        if (!idField) {
-          Toast.fire({
-            icon: "error",
-            title: "Error finding the name!",
-          });
-        }
+                const torchFields = Array.from(
+                    document.querySelectorAll("#torch-fields")[0].children,
+                ).map((li) => {
+                    const path = li.getAttribute("data-path");
+                    const shape = li.getAttribute("data-shape");
+                    return { path, shape };
+                });
 
-        let name = idField.value;
+                console.log({
+                    jaxFields,
+                    torchFields,
+                });
+                let shorterArrayLength =
+                    jaxFields.length <= torchFields.length
+                        ? jaxFields.length
+                        : torchFields.length;
+                for (let i = 0; i < shorterArrayLength; i++) {
+                    if (jaxFields[i].shape !== torchFields[i].shape) {
+                        Toast.fire({
+                            icon: "error",
+                            title: `${jaxFields[i].path} has shape ${jaxFields[i].shape}, while ${torchFields[i].path} has shape ${torchFields[i].shape}`,
+                        });
+                        document
+                            .getElementById("error-field")
+                            .classList.remove("hidden");
+                        document
+                            .getElementById("error-field")
+                            .querySelector("span").innerText =
+                            `${jaxFields[i].path} has shape ${jaxFields[i].shape}, while ${torchFields[i].path} has shape ${torchFields[i].shape}`;
+                        return { error: "Invalid shapes" };
+                    }
+                }
 
-        const response = await fetch("/convert", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            jaxFields,
-            torchFields,
-            name,
-          }),
-        });
+                return { jaxFields: jaxFields, torchFields: torchFields };
+            }
 
-        const res = await response.json();
-        console.log(res);
-        if (res.error) {
-          Toast.fire({
-            icon: "error",
-            title: res.error,
-          });
-        } else {
-          Toast.fire({
-            icon: "success",
-            title: "Conversion successful",
-          });
-        }
-      }
-    </script>
-    <h1 class="text-3xl my-12">Welcome to Torch2Jax</h1>
+            async function convert() {
+                const fields = getJaxAndTorchFields();
+                if (fields.error) {
+                    Toast.fire({
+                        icon: "error",
+                        title: "Failed to convert!",
+                        text: fields.error,
+                    });
+                }
+                const jaxFields = fields.jaxFields;
+                const torchFields = fields.torchFields;
 
-    <div class="grid grid-cols-2 gap-x-2">
-      <div class="">
-        <h2 class="text-2xl">JAX</h2>
-        <div id="jax-fields" class="bg-base-200">
-          {% for field in pytree_fields %}
-          <div
-            data-path="{{field.path}}"
-            data-shape="{{field.shape}}"
-            data-type="{{field.type}}"
-            class="whitespace-nowrap overflow-x-scroll cursor-pointer"
-          >
-            {{ field.path }} {{ field.shape }}
-          </div>
-          {% endfor %}
+                let idField = document.getElementById("name");
+                if (!idField) {
+                    Toast.fire({
+                        icon: "error",
+                        title: "Error finding the name!",
+                    });
+                }
+
+                let name = idField.value;
+
+                const response = await fetch("/convert", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        jaxFields,
+                        torchFields,
+                        name,
+                    }),
+                });
+
+                const res = await response.json();
+                console.log(res);
+                if (res.error) {
+                    Toast.fire({
+                        icon: "error",
+                        title: res.error,
+                    });
+                } else {
+                    Toast.fire({
+                        icon: "success",
+                        title: "Conversion successful",
+                    });
+                }
+            }
+        </script>
+        <h1 class="text-3xl my-12">Welcome to Torch2Jax</h1>
+
+        <div class="grid grid-cols-2 gap-x-2">
+            <div class="">
+                <h2 class="text-2xl">JAX</h2>
+                <div id="jax-fields" class="bg-base-200">
+                    {% for field in pytree_fields %}
+                    <div
+                        data-path="{{field.path}}"
+                        data-shape="{{field.shape}}"
+                        data-type="{{field.type}}"
+                        class="whitespace-nowrap overflow-x-scroll cursor-pointer"
+                    >
+                        {{ field.path }} {{ field.shape }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="">
+                <h2 class="text-2xl">PyTorch</h2>
+                <div id="torch-fields" class="bg-base-200">
+                    {% for field in torch_fields %}
+                    <div
+                        data-path="{{field.path}}"
+                        data-shape="{{field.shape}}"
+                        class="whitespace-nowrap overflow-x-scroll cursor-pointer"
+                    >
+                        {{ field.path }} {{ field.shape }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
-      </div>
-
-      <div class="">
-        <h2 class="text-2xl">PyTorch</h2>
-        <div id="torch-fields" class="bg-base-200">
-          {% for field in torch_fields %}
-          <div
-            data-path="{{field.path}}"
-            data-shape="{{field.shape}}"
-            class="whitespace-nowrap overflow-x-scroll cursor-pointer"
-          >
-            {{ field.path }} {{ field.shape }}
-          </div>
-          {% endfor %}
+        <div class="flex justify-center my-12 w-full">
+            <div class="flex flex-col justify-center w-full">
+                <input
+                    id="name"
+                    type="text"
+                    name="name"
+                    class="input input-primary w-full"
+                    placeholder="Name of the new file (model.eqx per default)"
+                    value="model.eqx"
+                />
+                <button
+                    onclick="convert()"
+                    class="btn btn-accent btn-wide btn-lg mx-auto my-2"
+                >
+                    Convert!
+                </button>
+            </div>
         </div>
-      </div>
-    </div>
-    <div class="flex justify-center my-12 w-full">
-      <div class="flex flex-col justify-center w-full">
-        <input
-          id="name"
-          type="text"
-          name="name"
-          class="input input-primary w-full"
-          placeholder="Name of the new file (model.eqx per default)"
-          value="model.eqx"
-        />
-        <button
-          onclick="convert()"
-          class="btn btn-accent btn-wide btn-lg mx-auto my-2"
-        >
-          Convert!
-        </button>
-      </div>
-    </div>
-    <div role="alert" class="alert alert-error hidden" id="error-field">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="stroke-current shrink-0 h-6 w-6"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-        />
-      </svg>
-      <span></span>
-    </div>
+        <div role="alert" class="alert alert-error hidden" id="error-field">
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="stroke-current shrink-0 h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+            </svg>
+            <span></span>
+        </div>
 
-    <div class="flex justify-center">
-      <button onclick="visualize()" class="btn btn-secondary">
-        Visualize with Penzai!
-      </button>
-    </div>
+        <div class="flex justify-center">
+            <button onclick="visualize()" class="btn btn-secondary">
+                Visualize with Penzai!
+            </button>
+        </div>
 
-    <hr />
-    <div id="visualizationResult"></div>
-  </body>
+        <hr />
+        <div id="visualizationResult"></div>
+    </body>
 </html>
