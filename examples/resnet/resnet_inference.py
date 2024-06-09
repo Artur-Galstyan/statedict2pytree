@@ -5,16 +5,17 @@ import urllib
 import equinox as eqx
 import jax
 import jax.numpy as jnp
+import numpy as np
 import torch
-from examples.resnet.resnet import resnet50
+from examples.resnet.resnet import resnet18
 from PIL import Image
 from torchvision import transforms
-from torchvision.models import resnet50 as t_resnet50, ResNet50_Weights
+from torchvision.models import resnet18 as t_resnet18, ResNet18_Weights
 
 
 def test_resnet():
-    resnet_jax = resnet50(key=jax.random.PRNGKey(33), make_with_state=False)
-    resnet_torch = t_resnet50(weights=ResNet50_Weights.DEFAULT)
+    resnet_jax = resnet18(key=jax.random.PRNGKey(33), make_with_state=False)
+    resnet_torch = t_resnet18(weights=ResNet18_Weights.DEFAULT)
 
     img_name = "doggo.jpeg"
 
@@ -62,6 +63,15 @@ def test_resnet():
 
     label = imagenet_labels[str(jnp.argmax(out))][1]
     print(f"Label for index {jnp.argmax(out)}: {label}")
+
+    state_dict = resnet_torch.state_dict()
+    print(state_dict["fc.weight"])
+    print(model.fc.weight)
+    print(
+        np.allclose(
+            state_dict["fc.weight"].numpy(), np.array(model.fc.weight), atol=1e-4
+        ),
+    )
 
 
 if __name__ == "__main__":

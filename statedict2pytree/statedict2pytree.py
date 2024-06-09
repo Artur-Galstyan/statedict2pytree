@@ -175,10 +175,14 @@ def convert_from_pytree_and_state_dict(
     identity = lambda *args, **kwargs: pytree
     model, state = eqx.nn.make_with_state(identity)()
     state_paths: list[tuple[JaxField, TorchField]] = []
-    for jax_field, torch_field in zip(jax_fields, torch_fields):
+    for i in range(len(jax_fields)):
+        torch_field = torch_fields[i]
+        jax_field = jax_fields[i]
+        if torch_field.skip:
+            continue
         if not can_reshape(jax_field.shape, torch_field.shape):
             raise ValueError(
-                "Fields have incompatible shapes!"
+                "Fields have incompatible shapes! "
                 f"{jax_field.shape=} != {torch_field.shape=}"
             )
         path = jax_field.path.split(".")[1:]
