@@ -9,7 +9,6 @@ import numpy as np
 import torch
 from beartype.typing import Literal, Optional
 from jaxtyping import PyTree
-from penzai import pz
 
 from statedict2pytree.utils.pydantic_models import JaxField, TorchField
 from statedict2pytree.utils.utils import can_reshape, field_jsons_to_fields
@@ -25,29 +24,6 @@ PYTREE_PATH: Optional[str] = None
 
 STATE_DICT: Optional[dict[str, np.ndarray]] = None
 STATE_DICT_PATH: Optional[str] = None
-
-
-@app.route("/visualize", methods=["POST"])
-def _visualize_with_penzai():
-    global PYTREE, STATE_DICT
-    if PYTREE is None or STATE_DICT is None:
-        return flask.jsonify({"error": "No Pytree or StateDict found"})
-    request_data = flask.request.json
-    if request_data is None:
-        return flask.jsonify({"error": "No data received"})
-
-    jax_fields, torch_fields = field_jsons_to_fields(
-        request_data["jaxFields"], request_data["torchFields"]
-    )
-    model, state = convert_from_pytree_and_state_dict(
-        jax_fields, torch_fields, PYTREE, STATE_DICT
-    )
-    with pz.ts.active_autovisualizer.set_scoped(pz.ts.ArrayAutovisualizer()):
-        html_jax = pz.ts.render_to_html((model, state))
-        html_torch = pz.ts.render_to_html(STATE_DICT)
-
-    combined_html = f"<html><body>{html_jax}<hr>{html_torch}</body></html>"
-    return combined_html
 
 
 @app.route("/convert", methods=["POST"])
@@ -153,6 +129,8 @@ def convert_from_path(
     t_path = pathlib.Path(state_dict_path)
 
     for jax_field, torch_field in zip(jax_fields, torch_fields):
+        if torch_field.skip:
+            continue
         if not can_reshape(jax_field.shape, torch_field.shape):
             raise ValueError(
                 "Fields have incompatible shapes!"

@@ -17,6 +17,7 @@ dependencies = [
     "flask",
     "pydantic",
     "penzai",
+    "torchvision",
 ]
 [project.optional-dependencies]
 dev = ["nox", "pre-commit", "pytest", "mkdocs"]

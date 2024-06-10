@@ -4,6 +4,7 @@ import pickle
 
 import numpy as np
 from beartype.typing import Optional
+from tqdm import tqdm
 
 from statedict2pytree.utils.pydantic_models import TorchField
 
@@ -13,7 +14,7 @@ def chunkify_state_dict(
 ) -> list[str]:
     paths = []
 
-    for key in state_dict.keys():
+    for key in tqdm(state_dict.keys()):
         if not hasattr(state_dict[key], "shape"):
             continue
         path = pathlib.Path(target_path) / "state_dict"

@@ -8,6 +8,7 @@ import equinox as eqx
 import jax
 import numpy as np
 from jaxtyping import Array, PyTree
+from tqdm import tqdm
 
 from statedict2pytree.utils.pydantic_models import JaxField
 
@@ -17,7 +18,7 @@ def chunkify_pytree(tree: PyTree, target_path: str) -> list[str]:
 
     flattened, _ = jax.tree_util.tree_flatten_with_path(tree)
 
-    for key_path, value in flattened:
+    for key_path, value in tqdm(flattened):
         key = jax.tree_util.keystr(key_path)
         if not hasattr(value, "shape"):
             continue
