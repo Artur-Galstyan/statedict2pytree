@@ -23,7 +23,7 @@
                 for (let i = 0; i < allJaxFields.length; i++) {
                     let jaxField = allJaxFields[i];
                     let torchField = allTorchFields[i];
-
+                    if (torchField === undefined) continue;
                     if (torchField.getAttribute("data-skip") === "true") {
                         jaxField.classList.remove("bg-error");
                         torchField.classList.remove("bg-error");
@@ -95,6 +95,7 @@
                 );
             };
             window.initSortable();
+            window.onEndFct();
         </script>
     </head>
     <body class="w-10/12 mx-auto">
@@ -218,6 +219,26 @@
                 }
             }
 
+            function removeSkipLayer(index) {
+                console.log("removing skip at ", index);
+                const toDelete = document.getElementById("torch-" + index);
+                const parent = document.getElementById("torch-fields");
+                for (let i = 0; i < parent.children.length; i++) {
+                    let c = parent.children[i].children[0];
+                    let torchId = Number(c.id.replace("torch-", ""));
+                    if (torchId >= index) {
+                        c.id = "torch-" + (torchId - 1);
+                        parent.children[i].children[1].setAttribute(
+                            "onclick",
+                            "addSkipLayer(" + (torchId - 1) + ")",
+                        );
+                    }
+                }
+                toDelete.parentNode.remove();
+                window.initSortable();
+                window.onEndFct();
+            }
+
             function addSkipLayer(index) {
                 console.log("adding skips at ", index);
                 const parent = document.getElementById("torch-fields");
@@ -247,8 +268,17 @@
                 const button = document.createElement("button");
                 button.innerHTML = "+";
                 button.setAttribute("onclick", "addSkipLayer(" + index + ")");
+
+                const deleteButton = document.createElement("button");
+                deleteButton.innerHTML = "-";
+                deleteButton.setAttribute(
+                    "onclick",
+                    "removeSkipLayer(" + index + ")",
+                );
+
                 skipLayerFlex.appendChild(skipLayer);
                 skipLayerFlex.appendChild(button);
+                skipLayerFlex.appendChild(deleteButton);
                 const referenceNode = parent.children[index];
                 parent.insertBefore(skipLayerFlex, referenceNode);
                 window.initSortable();

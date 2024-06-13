@@ -31,6 +31,7 @@ def main():
             params = json.load(f)
 
         model_args = LLaMAModelArgs(**params)
+        model_args.precision = "quarter"
         key = jax.random.PRNGKey(21)
         logger.info("Creating JAX model...")
         model = LLaMA(model_args, key=key)

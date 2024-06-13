@@ -1,8 +1,7 @@
 import jax
 import statedict2pytree as s2p
+from resnet_model import resnet18
 from torchvision.models import resnet18 as t_resnet18, ResNet18_Weights
-
-from .resnet import resnet18
 
 
 def convert_resnet():

@@ -7,7 +7,7 @@ requires-python = "~=3.10"
 authors = [{ name = "Artur A. Galstyan", email = "mail@arturgalstyan.dev" }]
 dependencies = [
     "jax",
-    "equinox>=0.11.4",
+    "equinox",
     "jaxlib",
     "beartype",
     "typing_extensions",
@@ -18,6 +18,7 @@ dependencies = [
     "pydantic",
     "penzai",
     "torchvision",
+    "jaxonmodels",
 ]
 [project.optional-dependencies]
 dev = ["nox", "pre-commit", "pytest", "mkdocs"]
@@ -49,3 +50,7 @@ exclude = ["testing_ground"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+
+[tool.hatch.metadata]
+allow-direct-references = true

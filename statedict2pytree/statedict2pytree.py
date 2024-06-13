@@ -213,4 +213,4 @@ def start_conversion_from_pytree_and_state_dict(
 
 def run_server():
     app.jinja_env.globals.update(enumerate=enumerate)
-    app.run(debug=True, port=5500)
+    app.run(debug=False, port=5500)
