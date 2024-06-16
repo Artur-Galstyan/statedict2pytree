@@ -1,11 +1,11 @@
 # statedict2pytree
 
-![statedict2pytree](torch2jax.png "A ResNet demo")
+![statedict2pytree](statedict2pytree.png "A ResNet demo")
 
 ## Important
 
-This package is still in its infancy and hihgly experimental! The code works, but it's far from perfect. With more and more iterations, it will eventually become stable and well tested. 
-PRs and other contributions are *highly* welcome! :) 
+This package is still in its infancy and hihgly experimental! The code works, but it's far from perfect. With more and more iterations, it will eventually become stable and well tested.
+PRs and other contributions are *highly* welcome! :)
 
 ## Info
 
@@ -19,7 +19,7 @@ Usually, if you _declared the fields in the same order as in the PyTorch model_,
 
 Currently, there is no sophisticated shape matching in place. Two matrices are considered "matching" if the product of their shape match. For example:
 
-1. (8, 1, 1) and (8, ) match, because (8 _ 1 _ 1 = 8)
+(8, 1, 1) and (8, ) match, because (8 _ 1 _ 1 = 8)
 
 ## Get Started
 
@@ -29,7 +29,6 @@ Run
 
 ```bash
 pip install statedict2pytree
-
 ```
 
 ### Docs
