@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./statedict2pytree/**/*.{html,js}"],
+  content: ["./src/**/*.{html,js,svelte}"],
   theme: {
     extend: {},
   },

@@ -1,9 +1,0 @@
-{
-  "scripts": {
-    "watch": "npx tailwindcss -i ./statedict2pytree/static/input.css -o ./statedict2pytree/static/output.css --watch"
-  },
-  "devDependencies": {
-    "daisyui": "^4.11.1",
-    "tailwindcss": "^3.4.3"
-  }
-}

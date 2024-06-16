@@ -16,7 +16,7 @@ from statedict2pytree.utils.utils_pytree import get_node, pytree_to_fields
 from statedict2pytree.utils.utils_state_dict import state_dict_to_fields
 
 
-app = flask.Flask(__name__)
+app = flask.Flask(__name__, static_url_path="/", static_folder="../client/public")
 
 
 PYTREE: Optional[PyTree] = None
@@ -24,6 +24,41 @@ PYTREE_PATH: Optional[str] = None
 
 STATE_DICT: Optional[dict[str, np.ndarray]] = None
 STATE_DICT_PATH: Optional[str] = None
+
+
+@app.route("/", methods=["GET"])
+def index():
+    return flask.send_from_directory("../client/public", "index.html")
+
+
+@app.route("/startup/getTorchFields", methods=["GET"])
+def _get_torch_fields():
+    if STATE_DICT is None:
+        if STATE_DICT_PATH is None:
+            raise ValueError("STATE_DICT None AND STATE_DICT_PATH was not provided!")
+        with open(str(pathlib.Path(STATE_DICT_PATH) / "torch_fields.pkl"), "rb") as f:
+            torch_fields = pickle.load(f)
+    else:
+        torch_fields = state_dict_to_fields(STATE_DICT)
+    fields = []
+    for tf in torch_fields:
+        fields.append(tf.model_dump())
+    return fields
+
+
+@app.route("/startup/getJaxFields", methods=["GET"])
+def _get_jax_fields():
+    if PYTREE is None:
+        if PYTREE_PATH is None:
+            raise ValueError("PYTREE is None AND PYTREE_PATH was not provided!")
+        with open(str(pathlib.Path(PYTREE_PATH) / "jax_fields.pkl"), "rb") as f:
+            jax_fields = pickle.load(f)
+    else:
+        jax_fields = pytree_to_fields(PYTREE)
+    fields = []
+    for jf in jax_fields:
+        fields.append(jf.model_dump())
+    return fields
 
 
 @app.route("/convert", methods=["POST"])
@@ -69,29 +104,6 @@ def _convert_torch_to_jax():
             raise ValueError("STATE_DICT_PATH or PYTREE_PATH is None")
         convert_from_path(jax_fields, torch_fields, PYTREE_PATH, STATE_DICT_PATH)
     return flask.jsonify({"status": "success"})
-
-
-@app.route("/", methods=["GET"])
-def index():
-    if PYTREE is None:
-        if PYTREE_PATH is None:
-            raise ValueError("PYTREE is None AND PYTREE_PATH was not provided!")
-        with open(str(pathlib.Path(PYTREE_PATH) / "jax_fields.pkl"), "rb") as f:
-            jax_fields = pickle.load(f)
-    else:
-        jax_fields = pytree_to_fields(PYTREE)
-
-    if STATE_DICT is None:
-        if STATE_DICT_PATH is None:
-            raise ValueError("STATE_DICT None AND STATE_DICT_PATH was not provided!")
-        with open(str(pathlib.Path(STATE_DICT_PATH) / "torch_fields.pkl"), "rb") as f:
-            torch_fields = pickle.load(f)
-    else:
-        torch_fields = state_dict_to_fields(STATE_DICT)
-
-    return flask.render_template(
-        "index.html", pytree_fields=jax_fields, torch_fields=torch_fields
-    )
 
 
 def autoconvert_state_dict_to_pytree(
@@ -212,5 +224,4 @@ def start_conversion_from_pytree_and_state_dict(
 
 
 def run_server():
-    app.jinja_env.globals.update(enumerate=enumerate)
-    app.run(debug=False, port=5500)
+    app.run(debug=True, port=5500)

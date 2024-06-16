@@ -1,5 +1,5 @@
 /*
-! tailwindcss v3.4.3 | MIT License | https://tailwindcss.com
+! tailwindcss v3.4.4 | MIT License | https://tailwindcss.com
 */
 
 /*
@@ -508,6 +508,10 @@ html {
   -webkit-tap-highlight-color: transparent;
 }
 
+* {
+  scrollbar-color: currentColor transparent;
+}
+
 :root {
   color-scheme: light;
   --in: 72.06% 0.191 231.6;
@@ -750,48 +754,10 @@ html {
   --tw-contain-style:  ;
 }
 
-.alert {
-  display: grid;
-  width: 100%;
-  grid-auto-flow: row;
-  align-content: flex-start;
-  align-items: center;
-  justify-items: center;
-  gap: 1rem;
-  text-align: center;
-  border-radius: var(--rounded-box, 1rem);
-  border-width: 1px;
-  --tw-border-opacity: 1;
-  border-color: var(--fallback-b2,oklch(var(--b2)/var(--tw-border-opacity)));
-  padding: 1rem;
-  --tw-text-opacity: 1;
-  color: var(--fallback-bc,oklch(var(--bc)/var(--tw-text-opacity)));
-  --alert-bg: var(--fallback-b2,oklch(var(--b2)/1));
-  --alert-bg-mix: var(--fallback-b1,oklch(var(--b1)/1));
-  background-color: var(--alert-bg);
-}
-
-@media (min-width: 640px) {
-  .alert {
-    grid-auto-flow: column;
-    grid-template-columns: auto minmax(auto,1fr);
-    justify-items: start;
-    text-align: start;
-  }
-}
-
 .avatar.placeholder > div {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-@media (hover:hover) {
-  .table tr.hover:hover,
-  .table tr.hover:nth-child(even):hover {
-    --tw-bg-opacity: 1;
-    background-color: var(--fallback-b2,oklch(var(--b2)/var(--tw-bg-opacity)));
-  }
 }
 
 .btn {
@@ -942,42 +908,46 @@ html {
   margin-inline-end: -1rem;
 }
 
-.link {
-  cursor: pointer;
-  text-decoration-line: underline;
-}
-
-.table {
+.swap {
   position: relative;
-  width: 100%;
-  border-radius: var(--rounded-box, 1rem);
-  text-align: left;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
+  display: inline-grid;
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+  place-content: center;
+  cursor: pointer;
 }
 
-.table :where(.table-pin-rows thead tr) {
-  position: sticky;
-  top: 0px;
-  z-index: 1;
-  --tw-bg-opacity: 1;
-  background-color: var(--fallback-b1,oklch(var(--b1)/var(--tw-bg-opacity)));
+.swap > * {
+  grid-column-start: 1;
+  grid-row-start: 1;
+  transition-duration: 300ms;
+  transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  transition-property: transform, opacity;
 }
 
-.table :where(.table-pin-rows tfoot tr) {
-  position: sticky;
-  bottom: 0px;
-  z-index: 1;
-  --tw-bg-opacity: 1;
-  background-color: var(--fallback-b1,oklch(var(--b1)/var(--tw-bg-opacity)));
+.swap input {
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
 }
 
-.table :where(.table-pin-cols tr th) {
-  position: sticky;
-  left: 0px;
-  right: 0px;
-  --tw-bg-opacity: 1;
-  background-color: var(--fallback-b1,oklch(var(--b1)/var(--tw-bg-opacity)));
+.swap .swap-on,
+.swap .swap-indeterminate,
+.swap input:indeterminate ~ .swap-on {
+  opacity: 0;
+}
+
+.swap input:checked ~ .swap-off,
+.swap-active .swap-off,
+.swap input:indeterminate ~ .swap-off {
+  opacity: 0;
+}
+
+.swap input:checked ~ .swap-on,
+.swap-active .swap-on,
+.swap input:indeterminate ~ .swap-indeterminate {
+  opacity: 1;
 }
 
 .toast {
@@ -989,14 +959,6 @@ html {
   white-space: nowrap;
   gap: 0.5rem;
   padding: 1rem;
-}
-
-.alert-error {
-  border-color: var(--fallback-er,oklch(var(--er)/0.2));
-  --tw-text-opacity: 1;
-  color: var(--fallback-erc,oklch(var(--erc)/var(--tw-text-opacity)));
-  --alert-bg: var(--fallback-er,oklch(var(--er)/1));
-  --alert-bg-mix: var(--fallback-b1,oklch(var(--b1)/1));
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1191,16 +1153,6 @@ html {
   text-align: inherit;
 }
 
-.link:focus {
-  outline: 2px solid transparent;
-  outline-offset: 2px;
-}
-
-.link:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-
 .mockup-browser .mockup-browser-toolbar .input {
   position: relative;
   margin-left: auto;
@@ -1298,45 +1250,6 @@ html {
   to {
     background-position: -50%;
   }
-}
-
-:is([dir="rtl"] .table) {
-  text-align: right;
-}
-
-.table :where(th, td) {
-  padding-left: 1rem;
-  padding-right: 1rem;
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
-  vertical-align: middle;
-}
-
-.table tr.active,
-  .table tr.active:nth-child(even),
-  .table-zebra tbody tr:nth-child(even) {
-  --tw-bg-opacity: 1;
-  background-color: var(--fallback-b2,oklch(var(--b2)/var(--tw-bg-opacity)));
-}
-
-.table :where(thead tr, tbody tr:not(:last-child),tbody tr:first-child:last-child) {
-  border-bottom-width: 1px;
-  --tw-border-opacity: 1;
-  border-bottom-color: var(--fallback-b2,oklch(var(--b2)/var(--tw-border-opacity)));
-}
-
-.table :where(thead, tfoot) {
-  white-space: nowrap;
-  font-size: 0.75rem;
-  line-height: 1rem;
-  font-weight: 700;
-  color: var(--fallback-bc,oklch(var(--bc)/0.6));
-}
-
-.table :where(tfoot) {
-  border-top-width: 1px;
-  --tw-border-opacity: 1;
-  border-top-color: var(--fallback-b2,oklch(var(--b2)/var(--tw-border-opacity)));
 }
 
 .toast > * {
@@ -1437,10 +1350,6 @@ html {
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
-.static {
-  position: static;
-}
-
 .mx-auto {
   margin-left: auto;
   margin-right: auto;
@@ -1460,10 +1369,6 @@ html {
   display: flex;
 }
 
-.table {
-  display: table;
-}
-
 .grid {
   display: grid;
 }
@@ -1472,28 +1377,12 @@ html {
   display: none;
 }
 
-.h-6 {
-  height: 1.5rem;
-}
-
-.w-10\/12 {
-  width: 83.333333%;
-}
-
-.w-6 {
-  width: 1.5rem;
-}
-
 .w-full {
   width: 100%;
 }
 
 .flex-1 {
   flex: 1 1 0%;
-}
-
-.shrink-0 {
-  flex-shrink: 0;
 }
 
 .cursor-pointer {
@@ -1536,14 +1425,14 @@ html {
   background-color: var(--fallback-a,oklch(var(--a)/var(--tw-bg-opacity)));
 }
 
-.bg-base-200 {
-  --tw-bg-opacity: 1;
-  background-color: var(--fallback-b2,oklch(var(--b2)/var(--tw-bg-opacity)));
-}
-
 .bg-blue-400 {
   --tw-bg-opacity: 1;
   background-color: rgb(96 165 250 / var(--tw-bg-opacity));
+}
+
+.bg-base-200 {
+  --tw-bg-opacity: 1;
+  background-color: var(--fallback-b2,oklch(var(--b2)/var(--tw-bg-opacity)));
 }
 
 .bg-error {
@@ -1551,8 +1440,9 @@ html {
   background-color: var(--fallback-er,oklch(var(--er)/var(--tw-bg-opacity)));
 }
 
-.stroke-current {
-  stroke: currentColor;
+.text-4xl {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
 }
 
 .text-2xl {
