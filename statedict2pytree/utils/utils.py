@@ -15,17 +15,13 @@ def field_jsons_to_fields(
 ) -> tuple[list[JaxField], list[TorchField]]:
     jax_fields: list[JaxField] = []
     for f in jax_fields_json:
-        shape_tuple = tuple(
-            [int(i) for i in f["shape"].strip("()").split(",") if len(i) > 0]
+        jax_fields.append(
+            JaxField(path=f["path"], type=f["type"], shape=tuple(f["shape"]))
         )
-        jax_fields.append(JaxField(path=f["path"], type=f["type"], shape=shape_tuple))
 
     torch_fields: list[TorchField] = []
     for f in torch_fields_json:
-        shape_tuple = tuple(
-            [int(i) for i in f["shape"].strip("()").split(",") if len(i) > 0]
-        )
         torch_fields.append(
-            TorchField(path=f["path"], shape=shape_tuple, skip=f["skip"])
+            TorchField(path=f["path"], shape=tuple(f["shape"]), skip=f["skip"])
         )
     return jax_fields, torch_fields

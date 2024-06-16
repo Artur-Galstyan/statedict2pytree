@@ -4,6 +4,8 @@
     import { onMount } from "svelte";
     import Swal from "sweetalert2";
 
+    let model: string = "model.eqx";
+
     const Toast = Swal.mixin({
         toast: true,
         position: "top-end",
@@ -104,7 +106,6 @@
 
     function onEnd() {
         const updatedFields = fetchJaxAndTorchFields();
-        console.log(updatedFields);
         if (updatedFields.error) {
             Toast.fire({
                 icon: "error",
@@ -159,16 +160,40 @@
             }
         }
     }
-    function checkFields() {}
+    function checkFields(jaxFields: Field[], torchFields: Field[]) {
+        if (jaxFields.length > torchFields.length) {
+            return {
+                error: "JAX and PyTorch have lengths! Make sure to pad the PyTorch side.",
+            };
+        }
+
+        for (let i = 0; i < jaxFields.length; i++) {
+            let jaxField = jaxFields[i];
+            let torchField = torchFields[i];
+            if (torchField.skip === true) {
+                continue;
+            }
+
+            //@ts-ignore
+            let jaxShapeProduct = jaxField.shape.reduce((a, b) => a * b, 1);
+            //@ts-ignore
+            let torchShapeProduct = torchField.shape.reduce((a, b) => a * b, 1);
+
+            if (jaxShapeProduct !== torchShapeProduct) {
+                return {
+                    error: `JAX ${jaxField.path} with shape ${jaxField.shape} doesn't match PyTorch ${torchField.path} with shape ${torchField.shape}`,
+                };
+            }
+        }
+        return { success: true };
+    }
     function removeSkipLayer(index: number) {
-        console.log("removing skips at ", index);
         torchFields = torchFields.toSpliced(index, 1);
         setTimeout(() => {
             onEnd();
         }, 100);
     }
     function addSkipLayer(index: number) {
-        console.log("adding skips at ", index);
         const newField = {
             skip: true,
             shape: [],
@@ -181,7 +206,52 @@
         }, 100);
     }
 
-    function convert() {}
+    async function convert() {
+        let fields = fetchJaxAndTorchFields();
+        if (fields.error) {
+            Toast.fire({
+                icon: "error",
+                title: fields.error,
+            });
+            return;
+        }
+
+        let check = checkFields(fields.jaxFields, fields.torchFields);
+        if (check.error) {
+            Toast.fire({
+                icon: "error",
+                title: "Failed to convert",
+                text: check.error,
+            });
+            return;
+        }
+
+        const response = await fetch("/convert", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: model,
+                jaxFields: fields.jaxFields,
+                torchFields: fields.torchFields,
+            }),
+        });
+
+        const res = await response.json();
+        console.log(res);
+        if (res.error) {
+            Toast.fire({
+                icon: "error",
+                title: res.error,
+            });
+        } else {
+            Toast.fire({
+                icon: "success",
+                title: "Conversion successful",
+            });
+        }
+    }
 </script>
 
 <svelte:head><title>Statedict2PyTree</title></svelte:head>
@@ -191,19 +261,23 @@
 <div class="grid grid-cols-2 gap-x-2">
     <div class="">
         <h2 class="text-2xl">JAX</h2>
-        <div id="jax-fields" class="bg-base-200">
+        <div id="jax-fields" class="">
             {#each jaxFields as field, i}
                 <div
-                    id={"jax-" + String(i)}
-                    class="whitespace-nowrap overflow-x-scroll cursor-pointer"
-                    data-jax="jax"
-                    data-path={field.path}
-                    data-shape={field.shape}
-                    data-skip={field.skip}
-                    data-type={field.type}
+                    class="border h-12 rounded-xl flex flex-col justify-center"
                 >
-                    {field.path}
-                    {field.shape}
+                    <div
+                        id={"jax-" + String(i)}
+                        class="whitespace-nowrap overflow-x-scroll cursor-pointer mx-2"
+                        data-jax="jax"
+                        data-path={field.path}
+                        data-shape={field.shape}
+                        data-skip={field.skip}
+                        data-type={field.type}
+                    >
+                        {field.path}
+                        {field.shape}
+                    </div>
                 </div>
             {/each}
         </div>
@@ -211,9 +285,9 @@
 
     <div class="">
         <h2 class="text-2xl">PyTorch</h2>
-        <div id="torch-fields" class="bg-base-200">
+        <div id="torch-fields" class="">
             {#each torchFields as field, i}
-                <div class="flex space-x-2">
+                <div class="flex space-x-2 border h-12 rounded-xl">
                     <div
                         id={"torch-" + String(i)}
                         data-torch="torch"
@@ -221,7 +295,7 @@
                         data-shape={field.shape}
                         data-skip={field.skip}
                         data-type={field.type}
-                        class="flex-1 whitespace-nowrap overflow-x-scroll cursor-pointer"
+                        class="flex-1 mx-2 my-auto whitespace-nowrap overflow-x-scroll cursor-pointer"
                     >
                         {#if field.skip}
                             SKIP
@@ -232,12 +306,14 @@
                     </div>
                     {#if field.skip}
                         <button
+                            class="btn btn-ghost"
                             on:click={() => {
                                 removeSkipLayer(i);
                             }}>-</button
                         >
                     {/if}
                     <button
+                        class="btn btn-ghost"
                         on:click={() => {
                             addSkipLayer(i);
                         }}>+</button
@@ -255,7 +331,7 @@
             name="name"
             class="input input-primary w-full"
             placeholder="Name of the new file (model.eqx per default)"
-            value="model.eqx"
+            bind:value={model}
         />
         <button
             on:click={convert}

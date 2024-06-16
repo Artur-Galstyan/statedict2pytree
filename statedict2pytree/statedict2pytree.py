@@ -90,7 +90,7 @@ def _convert_torch_to_jax():
         request_data["jaxFields"], request_data["torchFields"]
     )
 
-    name = request_data["name"]
+    name = request_data["model"]
 
     if mode == "FROM_MEMORY":
         if STATE_DICT is None or PYTREE is None:
