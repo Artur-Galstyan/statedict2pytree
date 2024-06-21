@@ -38,7 +38,7 @@ def chunkify_pytree(tree: PyTree, target_path: str) -> list[str]:
 
 
 def serialize_pytree_chunks(tree: PyTree, paths: list[str], name: str):
-    for path in paths:
+    for path in tqdm(paths):
         array = np.load(path)
         tree = replace_node(tree, path.split(".")[1:-1], array)
 

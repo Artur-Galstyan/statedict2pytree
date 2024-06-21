@@ -5,6 +5,7 @@
     import Swal from "sweetalert2";
 
     let model: string = "model.eqx";
+    let anthropicModel: "opus" | "sonnet" | "haiku" = "haiku";
 
     const Toast = Swal.mixin({
         toast: true,
@@ -198,9 +199,9 @@
         }
         const newField = {
             skip: true,
-            shape: [],
+            shape: [0],
             path: "SKIP",
-            type: "",
+            type: "SKIP",
         } as Field;
         torchFields = fields.torchFields.toSpliced(index, 0, newField);
         setTimeout(() => {
@@ -373,11 +374,40 @@ bn1.running_mean
 bn1.running_var
 --PYTORCH END--
 
+
+Sometimes, there are so-called "skip-layers" in the PyTorch model. Those can be put anywhere, preferably to
+the end, because your priority is to match those fields that can be matched first! Here's an example:
+
+--JAX START--
+.layers[0].weight
+.layers[1].weight
+.layers[2].weight
+.layers[3].weight
+.layers[4].weight
+--JAX END--
+
+--PYTORCH START--
+layers.0.weight
+SKIP
+layers.3.weight
+layers.2.weight
+layers.1.weight
+--PYTORCH START--
+
+This should return
+
+--PYTORCH START--
+layers.0.weight
+layers.1.weight
+layers.2.weight
+layers.3.weight
+SKIP
+--PYTORCH START--
+
+
 It's not always 100% which belongs to which. Use your best judgement. Start your response with
 --PYTORCH START-- and end it with --PYTORCH END--.
 
-Sometimes, there are so-called "skip-layers" in the PyTorch model. Those can be put anywhere, preferably to
-the end, because your priority is to match those fields that can be matched first!
 
 Here's your input:
 --JAX START--
@@ -404,6 +434,7 @@ Here's your input:
             },
             body: JSON.stringify({
                 content: content,
+                model: anthropicModel,
             }),
         });
         let res = await req.json();
@@ -430,7 +461,7 @@ Here's your input:
         if (fields.torchFields.length !== rearrangedTorchFields.length) {
             Toast.fire({
                 icon: "error",
-                text: "Some fields are missing :(",
+                text: "Some fields are missing in the response. Try a different model instead.",
             });
             return;
         }
@@ -458,6 +489,11 @@ Here's your input:
         <button on:click={matchByName} class="btn btn-warning"
             >Match By Name</button
         >
+        <select bind:value={anthropicModel}>
+            <option value="opus">opus</option>
+            <option value="sonnet">sonnet</option>
+            <option value="haiku">haiku</option>
+        </select>
     </div>
 </div>
 <div class="grid grid-cols-2 gap-x-2">

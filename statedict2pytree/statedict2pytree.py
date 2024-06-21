@@ -4,18 +4,23 @@ import os
 import pathlib
 import pickle
 
+import anthropic
 import equinox as eqx
 import flask
 import numpy as np
 import torch
 from beartype.typing import Literal, Optional
+from dotenv import load_dotenv
 from jaxtyping import PyTree
+from tqdm import tqdm
 
 from statedict2pytree.utils.pydantic_models import JaxField, TorchField
 from statedict2pytree.utils.utils import can_reshape, field_jsons_to_fields
 from statedict2pytree.utils.utils_pytree import get_node, pytree_to_fields
 from statedict2pytree.utils.utils_state_dict import state_dict_to_fields
 
+
+load_dotenv()
 
 app = flask.Flask(__name__, static_url_path="/", static_folder="../client/public")
 
@@ -141,7 +146,7 @@ def convert_from_path(
     j_path = pathlib.Path(pytree_path)
     t_path = pathlib.Path(state_dict_path)
 
-    for jax_field, torch_field in zip(jax_fields, torch_fields):
+    for jax_field, torch_field in tqdm(zip(jax_fields, torch_fields)):
         if torch_field.skip:
             continue
         if not can_reshape(jax_field.shape, torch_field.shape):
@@ -226,11 +231,6 @@ def start_conversion_from_pytree_and_state_dict(
 
 @app.post("/anthropic")
 def make_anthropic_request():
-    import anthropic
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
     api_key = os.getenv("ANTHROPIC_API_KEY", None)
     if api_key is None:
         return {"error": "ANTHROPIC_API_KEY not set in env vars!"}
@@ -241,12 +241,26 @@ def make_anthropic_request():
     if "content" not in request_data:
         return flask.jsonify({"error": "No data received"})
 
+    if "model" not in request_data:
+        return flask.jsonify({"error": "There was no model provided"})
+
     content = request_data["content"]
+
+    anthropic_model: Optional[str] = None
+
+    match request_data["model"]:
+        case "haiku":
+            anthropic_model = "claude-3-haiku-20240307"
+        case "opus":
+            anthropic_model = "claude-3-opus-20240229"
+        case "sonnet":
+            anthropic_model = "claude-3-sonnet-20240229"
+    if not anthropic_model:
+        return flask.jsonify({"error": "No model provided"})
 
     client = anthropic.Anthropic(api_key=api_key)
     message = client.messages.create(
-        # model="claude-3-opus-20240229",
-        model="claude-3-haiku-20240307",
+        model=anthropic_model,
         max_tokens=4096,
         messages=[{"role": "user", "content": content}],
     )
@@ -255,4 +269,4 @@ def make_anthropic_request():
 
 
 def run_server():
-    app.run(debug=True, port=5500)
+    app.run(debug=False, port=5500)

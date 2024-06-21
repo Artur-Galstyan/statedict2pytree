@@ -46,7 +46,7 @@ order-by-type = false
 reportIncompatibleMethodOverride = true
 reportMissingImports = false
 include = ["statedict2pytree", "tests", "examples"]
-exclude = ["testing_ground"]
+exclude = ["testing_ground", "examples/llama/tokenizer.py"]
 
 
 [build-system]
