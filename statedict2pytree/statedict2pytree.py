@@ -1,4 +1,5 @@
 import functools as ft
+import json
 import os
 import pathlib
 import pickle
@@ -221,6 +222,36 @@ def start_conversion_from_pytree_and_state_dict(
     for k, v in state_dict.items():
         STATE_DICT[k] = v.numpy()
     run_server()
+
+
+@app.post("/anthropic")
+def make_anthropic_request():
+    import anthropic
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    api_key = os.getenv("ANTHROPIC_API_KEY", None)
+    if api_key is None:
+        return {"error": "ANTHROPIC_API_KEY not set in env vars!"}
+
+    request_data = flask.request.json
+    if request_data is None:
+        return flask.jsonify({"error": "No data received"})
+    if "content" not in request_data:
+        return flask.jsonify({"error": "No data received"})
+
+    content = request_data["content"]
+
+    client = anthropic.Anthropic(api_key=api_key)
+    message = client.messages.create(
+        # model="claude-3-opus-20240229",
+        model="claude-3-haiku-20240307",
+        max_tokens=4096,
+        messages=[{"role": "user", "content": content}],
+    )
+
+    return json.dumps({"content": str(message.content[0].text)})  # pyright: ignore
 
 
 def run_server():

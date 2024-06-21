@@ -19,6 +19,8 @@ dependencies = [
     "penzai",
     "torchvision",
     "jaxonmodels",
+    "anthropic",
+    "python-dotenv",
 ]
 [project.optional-dependencies]
 dev = ["nox", "pre-commit", "pytest", "mkdocs"]
