@@ -40,11 +40,8 @@ def test_conv():
     torch_model = T()
     state_dict = torch_model.state_dict()
 
-    jax_fields = s2p.pytree_to_fields(jax_model)
-    torch_fields = s2p.state_dict_to_fields(state_dict)
-
-    model, state = s2p.convert(
-        jax_fields, torch_fields, pytree=jax_model, state_dict=state_dict
+    model, state = s2p.autoconvert_state_dict_to_pytree(
+        pytree=jax_model, state_dict=state_dict
     )
 
     assert np.allclose(

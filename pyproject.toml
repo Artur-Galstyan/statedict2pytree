@@ -1,6 +1,6 @@
 [project]
 name = "statedict2pytree"
-version = "0.5.2"
+version = "0.5.3"
 description = "Converts torch models into PyTrees for Equinox"
 readme = "README.md"
 requires-python = "~=3.10"
@@ -19,6 +19,9 @@ dependencies = [
     "penzai",
     "torchvision",
     "jaxonmodels",
+    "anthropic",
+    "python-dotenv",
+    "pytest",
 ]
 [project.optional-dependencies]
 dev = ["nox", "pre-commit", "pytest", "mkdocs"]
@@ -44,7 +47,7 @@ order-by-type = false
 reportIncompatibleMethodOverride = true
 reportMissingImports = false
 include = ["statedict2pytree", "tests", "examples"]
-exclude = ["testing_ground"]
+exclude = ["testing_ground", "examples/llama/tokenizer.py"]
 
 
 [build-system]

@@ -5,6 +5,7 @@
     import Swal from "sweetalert2";
 
     let model: string = "model.eqx";
+    let anthropicModel: "opus" | "sonnet" | "haiku" = "haiku";
 
     const Toast = Swal.mixin({
         toast: true,
@@ -26,7 +27,6 @@
 
     let jaxFields: Field[] = [];
     let torchFields: Field[] = [];
-    let torchSortable: Sortable;
     onMount(async () => {
         let req = await fetch("/startup/getJaxFields");
         jaxFields = (await req.json()) as Field[];
@@ -35,10 +35,14 @@
         setTimeout(() => {
             initSortable();
         }, 100);
+
+        setTimeout(() => {
+            onEnd();
+        }, 500);
     });
 
     function initSortable() {
-        torchSortable = new Sortable(document.getElementById("torch-fields"), {
+        new Sortable(document.getElementById("torch-fields"), {
             animation: 150,
             multiDrag: true,
             ghostClass: "bg-blue-400",
@@ -46,13 +50,6 @@
             multiDragKey: "shift",
             onEnd: onEnd,
         });
-    }
-
-    function swap(a: any, b: any, array: any[]) {
-        const temp = array[a];
-        array[a] = array[b];
-        array[b] = temp;
-        return array;
     }
 
     function fetchJaxAndTorchFields() {
@@ -105,60 +102,58 @@
     }
 
     function onEnd() {
-        const updatedFields = fetchJaxAndTorchFields();
-        if (updatedFields.error) {
-            Toast.fire({
-                icon: "error",
-                title: updatedFields.error,
-            });
-            return;
-        }
-
-        for (let i = 0; i < updatedFields.jaxFields.length; i++) {
-            let jaxField = updatedFields.jaxFields[i];
-            let torchField = updatedFields.torchFields[i];
-            if (torchField === undefined) continue;
-            if (torchField.skip === true) {
-                document
-                    .getElementById("jax-" + i)
-                    ?.classList.remove("bg-error");
-                document
-                    .getElementById("torch-" + i)
-                    ?.classList.remove("bg-error");
-                continue;
+        setTimeout(() => {
+            const updatedFields = fetchJaxAndTorchFields();
+            if (updatedFields.error) {
+                Toast.fire({
+                    icon: "error",
+                    title: updatedFields.error,
+                });
+                return;
             }
-            let jaxShape = jaxField.shape;
-            let torchShape = torchField.shape;
-            //@ts-ignore
-            let jaxShapeProduct = jaxShape.reduce((a, b) => a * b, 1);
-            //@ts-ignore
-            let torchShapeProduct = torchShape.reduce((a, b) => a * b, 1);
-            if (jaxShapeProduct !== torchShapeProduct) {
-                document.getElementById("jax-" + i)?.classList.add("bg-error");
-                document
-                    .getElementById("torch-" + i)
-                    ?.classList.add("bg-error");
-            } else {
-                document
-                    .getElementById("jax-" + i)
-                    ?.classList.remove("bg-error");
-                document
-                    .getElementById("torch-" + i)
-                    ?.classList.remove("bg-error");
-            }
-        }
 
-        if (updatedFields.torchFields.length > updatedFields.jaxFields.length) {
-            for (
-                let i = updatedFields.jaxFields.length;
-                i < updatedFields.torchFields.length;
-                i++
+            for (let i = 0; i < updatedFields.jaxFields.length; i++) {
+                let jaxField = updatedFields.jaxFields[i];
+                let torchField = updatedFields.torchFields[i];
+                if (torchField === undefined) continue;
+                if (torchField.skip === true) {
+                    document
+                        .getElementById("jax-" + i)
+                        ?.classList.remove("bg-error");
+                    continue;
+                }
+                let jaxShape = jaxField.shape;
+                let torchShape = torchField.shape;
+                //@ts-ignore
+                let jaxShapeProduct = jaxShape.reduce((a, b) => a * b, 1);
+                //@ts-ignore
+                let torchShapeProduct = torchShape.reduce((a, b) => a * b, 1);
+                if (jaxShapeProduct !== torchShapeProduct) {
+                    document
+                        .getElementById("jax-" + i)
+                        ?.classList.add("bg-error");
+                } else {
+                    document
+                        .getElementById("jax-" + i)
+                        ?.classList.remove("bg-error");
+                }
+            }
+
+            if (
+                updatedFields.torchFields.length >
+                updatedFields.jaxFields.length
             ) {
-                document
-                    .getElementById("torch-" + i)
-                    ?.classList.remove("bg-error");
+                for (
+                    let i = updatedFields.jaxFields.length;
+                    i < updatedFields.torchFields.length;
+                    i++
+                ) {
+                    document
+                        .getElementById("torch-" + i)
+                        ?.classList.remove("bg-error");
+                }
             }
-        }
+        }, 100);
     }
     function checkFields(jaxFields: Field[], torchFields: Field[]) {
         if (jaxFields.length > torchFields.length) {
@@ -194,13 +189,21 @@
         }, 100);
     }
     function addSkipLayer(index: number) {
+        let fields = fetchJaxAndTorchFields();
+        if (fields.error) {
+            Toast.fire({
+                icon: "error",
+                text: fields.error,
+            });
+            return;
+        }
         const newField = {
             skip: true,
-            shape: [],
-            path: "",
-            type: "",
+            shape: [0],
+            path: "SKIP",
+            type: "SKIP",
         } as Field;
-        torchFields = torchFields.toSpliced(index, 0, newField);
+        torchFields = fields.torchFields.toSpliced(index, 0, newField);
         setTimeout(() => {
             onEnd();
         }, 100);
@@ -252,12 +255,247 @@
             });
         }
     }
+
+    function padToMatch() {
+        let fields = fetchJaxAndTorchFields();
+        if (fields.error) {
+            Toast.fire({
+                icon: "error",
+                text: fields.error,
+            });
+            return;
+        }
+
+        if (fields.torchFields.length < fields.jaxFields.length) {
+            let toAdd = fields.jaxFields.length - fields.torchFields.length;
+            for (let i = 0; i < toAdd; i++) {
+                setTimeout(() => {
+                    console.log("adding skip at ", i);
+                    addSkipLayer(fields.jaxFields.length + i);
+                }, 100);
+            }
+        }
+    }
+
+    function removeAllSkipLayers() {
+        let fields = fetchJaxAndTorchFields();
+        if (fields.error) {
+            Toast.fire({
+                icon: "error",
+                text: fields.error,
+            });
+            return;
+        }
+        let filteredFields = [];
+        for (let i = 0; i < fields.torchFields.length; i++) {
+            if (fields.torchFields[i].skip === false) {
+                filteredFields.push(fields.torchFields[i]);
+            }
+        }
+        torchFields = filteredFields;
+    }
+
+    async function matchByName() {
+        let fields = fetchJaxAndTorchFields();
+        if (fields.error) {
+            Toast.fire({
+                icon: "error",
+                text: fields.error,
+            });
+            return;
+        }
+        if (fields.jaxFields.length !== fields.torchFields.length) {
+            Toast.fire({
+                icon: "error",
+                text: "PyTree and State Dict have diffent lengths. Make sure to pad first!",
+            });
+            return;
+        }
+        Toast.fire({
+            icon: "info",
+            title: "Matching by name...",
+            text: "This can take a while! Hold tight.",
+        });
+
+        let content = `
+You will get two lists of strings. These strings are fields of a JAX and PyTorch model.
+For example:
+--JAX START--
+.layers[0].weight
+.layers[1].weight
+.layers[2].weight
+.layers[3].weight
+.layers[4].weight
+--JAX END--
+
+--PYTORCH START--
+layers.0.weight
+layers.1.weight
+layers.4.weight
+layers.2.weight
+layers.3.weight
+--PYTORCH END--
+
+As you can see, the order doesn't match. This means, you should look at the PyTorch fields and
+rearrange them, such that they match the JAX model. In the above example, the expected return value
+is:
+--PYTORCH START--
+layers.0.weight
+layers.1.weight
+layers.2.weight
+layers.3.weight
+layers.4.weight
+--PYTORCH END--
+
+Here's another example:
+--JAX START--
+.conv1.weight
+.bn1.weight
+.bn1.bias
+.bn1.state_index.init[0]
+.bn1.state_index.init[1]
+--JAX END--
+
+--PYTORCH START--
+bn1.running_mean
+bn1.running_var
+conv1.weight
+bn1.weight
+bn1.bias
+--PYTORCH END--
+
+The expected return value in this case is:
+
+--PYTORCH START--
+conv1.weight
+bn1.weight
+bn1.bias
+bn1.running_mean
+bn1.running_var
+--PYTORCH END--
+
+
+Sometimes, there are so-called "skip-layers" in the PyTorch model. Those can be put anywhere, preferably to
+the end, because your priority is to match those fields that can be matched first! Here's an example:
+
+--JAX START--
+.layers[0].weight
+.layers[1].weight
+.layers[2].weight
+.layers[3].weight
+.layers[4].weight
+--JAX END--
+
+--PYTORCH START--
+layers.0.weight
+SKIP
+layers.3.weight
+layers.2.weight
+layers.1.weight
+--PYTORCH START--
+
+This should return
+
+--PYTORCH START--
+layers.0.weight
+layers.1.weight
+layers.2.weight
+layers.3.weight
+SKIP
+--PYTORCH START--
+
+
+It's not always 100% which belongs to which. Use your best judgement. Start your response with
+--PYTORCH START-- and end it with --PYTORCH END--.
+
+
+Here's your input:
+--JAX START--
+        `;
+
+        for (let i = 0; i < fields.jaxFields.length; i++) {
+            content += fields.jaxFields[i].path + "\n";
+        }
+        content += "--JAX END--\n";
+        content += "\n";
+        content += "--PYTORCH START--\n";
+
+        for (let i = 0; i < fields.torchFields.length; i++) {
+            content += fields.torchFields[i].path + "\n";
+        }
+
+        content += "--PYTORCH END--";
+        console.log(content);
+
+        let req = await fetch("/anthropic", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                content: content,
+                model: anthropicModel,
+            }),
+        });
+        let res = await req.json();
+        if (res.error) {
+            Toast.fire({
+                icon: "error",
+                text: res.error,
+            });
+            return;
+        }
+        console.log(res);
+        let responseContent = res.content;
+        let lines = responseContent.split("\n");
+        console.log(lines);
+        let rearrangedTorchFields = [];
+        for (let i = 0; i < lines.length; i++) {
+            let matchingTorchField = fields.torchFields.find(
+                (field) => field.path === lines[i],
+            );
+            if (matchingTorchField) {
+                rearrangedTorchFields.push(matchingTorchField);
+            }
+        }
+        if (fields.torchFields.length !== rearrangedTorchFields.length) {
+            Toast.fire({
+                icon: "error",
+                text: "Some fields are missing in the response. Try a different model instead.",
+            });
+            return;
+        }
+        console.log("rearrangedTorchFields", rearrangedTorchFields);
+        setTimeout(() => {
+            torchFields = rearrangedTorchFields;
+            onEnd();
+            Toast.fire({
+                icon: "success",
+                title: "Success",
+            });
+        }, 500);
+    }
 </script>
 
 <svelte:head><title>Statedict2PyTree</title></svelte:head>
 
 <h1 class="text-3xl my-12">Welcome to Torch2Jax</h1>
-
+<div class="my-4 flex justify-evenly">
+    <button on:click={padToMatch} class="btn btn-accent">Pad To Match</button>
+    <button on:click={removeAllSkipLayers} class="btn btn-secondary"
+        >Remove All Skip Layers</button
+    >
+    <div>
+        <button on:click={matchByName} class="btn btn-warning"
+            >Match By Name</button
+        >
+        <select bind:value={anthropicModel}>
+            <option value="opus">opus</option>
+            <option value="sonnet">sonnet</option>
+            <option value="haiku">haiku</option>
+        </select>
+    </div>
+</div>
 <div class="grid grid-cols-2 gap-x-2">
     <div class="">
         <h2 class="text-2xl">JAX</h2>
@@ -286,40 +524,42 @@
     <div class="">
         <h2 class="text-2xl">PyTorch</h2>
         <div id="torch-fields" class="">
-            {#each torchFields as field, i}
-                <div class="flex space-x-2 border h-12 rounded-xl">
-                    <div
-                        id={"torch-" + String(i)}
-                        data-torch="torch"
-                        data-path={field.path}
-                        data-shape={field.shape}
-                        data-skip={field.skip}
-                        data-type={field.type}
-                        class="flex-1 mx-2 my-auto whitespace-nowrap overflow-x-scroll cursor-pointer"
-                    >
+            {#key torchFields}
+                {#each torchFields as field, i}
+                    <div class="flex space-x-2 border h-12 rounded-xl">
+                        <div
+                            id={"torch-" + String(i)}
+                            data-torch="torch"
+                            data-path={field.path}
+                            data-shape={field.shape}
+                            data-skip={field.skip}
+                            data-type={field.type}
+                            class="flex-1 mx-2 my-auto whitespace-nowrap overflow-x-scroll cursor-pointer"
+                        >
+                            {#if field.skip}
+                                SKIP
+                            {:else}
+                                {field.path}
+                                {field.shape}
+                            {/if}
+                        </div>
                         {#if field.skip}
-                            SKIP
-                        {:else}
-                            {field.path}
-                            {field.shape}
+                            <button
+                                class="btn btn-ghost"
+                                on:click={() => {
+                                    removeSkipLayer(i);
+                                }}>-</button
+                            >
                         {/if}
-                    </div>
-                    {#if field.skip}
                         <button
                             class="btn btn-ghost"
                             on:click={() => {
-                                removeSkipLayer(i);
-                            }}>-</button
+                                addSkipLayer(i);
+                            }}>+</button
                         >
-                    {/if}
-                    <button
-                        class="btn btn-ghost"
-                        on:click={() => {
-                            addSkipLayer(i);
-                        }}>+</button
-                    >
-                </div>
-            {/each}
+                    </div>
+                {/each}
+            {/key}
         </div>
     </div>
 </div>
