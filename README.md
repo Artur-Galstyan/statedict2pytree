@@ -2,6 +2,11 @@
 
 ![statedict2pytree](statedict2pytree.png "A ResNet demo")
 
+## Docs
+
+Docs can be found [here](https://artur-galstyan.github.io/statedict2pytree/).
+
+
 ## Important
 
 This package is still in its infancy and hihgly experimental! The code works, but it's far from perfect. With more and more iterations, it will eventually become stable and well tested.
@@ -37,9 +42,6 @@ Currently, there is no sophisticated shape matching in place. Two matrices are c
 (8, 1, 1) and (8, ) match, because (8 _ 1 _ 1 = 8)
 
 
-### Docs
-
-Documentation will appear as soon as I have all the necessary features implemented. Until then, check out the "main.py" file for a better example.
 
 ### Disclaimer
 
