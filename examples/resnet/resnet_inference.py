@@ -7,7 +7,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import torch
-from examples.resnet.resnet import resnet18
+from examples.resnet.resnet import resnet18  # pyright: ignore
 from PIL import Image
 from torchvision import transforms
 from torchvision.models import resnet18 as t_resnet18, ResNet18_Weights

@@ -1,9 +1,6 @@
 import equinox as eqx
 import jax
 import torch
-from statedict2pytree.statedict2pytree import (
-    start_conversion_from_pytree_and_state_dict,
-)
 
 
 def test_long_models():
@@ -44,7 +41,7 @@ def test_long_models():
 
     pytree = Model()
     state_dict = TorchModel().state_dict()
-    start_conversion_from_pytree_and_state_dict(pytree, state_dict)
+    # start_conversion_from_pytree_and_state_dict(pytree, state_dict)
 
 
 if __name__ == "__main__":

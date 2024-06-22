@@ -1,6 +1,14 @@
 from pydantic import BaseModel
 
 
+class ChunkifiedPytreePath(BaseModel):
+    path: str
+
+
+class ChunkifiedStatedictPath(BaseModel):
+    path: str
+
+
 class Field(BaseModel):
     path: str
     shape: tuple[int, ...]
