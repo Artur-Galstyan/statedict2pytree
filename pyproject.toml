@@ -21,6 +21,7 @@ dependencies = [
     "jaxonmodels",
     "anthropic",
     "python-dotenv",
+    "pytest",
 ]
 [project.optional-dependencies]
 dev = ["nox", "pre-commit", "pytest", "mkdocs"]
