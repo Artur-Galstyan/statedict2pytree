@@ -5,7 +5,7 @@
     import Swal from "sweetalert2";
 
     let model: string = "model.eqx";
-    let anthropicModel: "opus" | "sonnet" | "haiku" = "haiku";
+    let anthropicModel: "opus" | "sonnet" | "sonnet3.5" | "haiku" = "haiku";
 
     const Toast = Swal.mixin({
         toast: true,
@@ -492,6 +492,7 @@ Here's your input:
         <select bind:value={anthropicModel}>
             <option value="opus">opus</option>
             <option value="sonnet">sonnet</option>
+            <option value="sonnet3.5">sonnet3.5</option>
             <option value="haiku">haiku</option>
         </select>
     </div>
