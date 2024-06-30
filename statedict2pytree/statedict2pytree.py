@@ -386,6 +386,8 @@ def make_anthropic_request():
             anthropic_model = "claude-3-opus-20240229"
         case "sonnet":
             anthropic_model = "claude-3-sonnet-20240229"
+        case "sonnet3.5":
+            anthropic_model = "claude-3-5-sonnet-20240620"
     if not anthropic_model:
         return flask.jsonify({"error": "No model provided"})
 
