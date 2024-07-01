@@ -4,7 +4,6 @@ import os
 import pathlib
 import pickle
 
-import anthropic
 import equinox as eqx
 import flask
 import numpy as np
@@ -20,7 +19,11 @@ from statedict2pytree.utils.pydantic_models import (
     JaxField,
     TorchField,
 )
-from statedict2pytree.utils.utils import can_reshape, field_jsons_to_fields
+from statedict2pytree.utils.utils import (
+    can_reshape,
+    field_jsons_to_fields,
+    make_anthropic_request,
+)
 from statedict2pytree.utils.utils_pytree import get_node, pytree_to_fields
 from statedict2pytree.utils.utils_state_dict import state_dict_to_fields
 
@@ -352,7 +355,7 @@ def start_conversion_from_pytree_and_state_dict(
 
 
 @app.post("/anthropic")
-def make_anthropic_request():
+def match_with_anthropic_endpoint():
     """
     Make a request to the Anthropic API using the provided content and model.
 
@@ -376,29 +379,14 @@ def make_anthropic_request():
         return flask.jsonify({"error": "There was no model provided"})
 
     content = request_data["content"]
-
-    anthropic_model: Optional[str] = None
-
-    match request_data["model"]:
-        case "haiku":
-            anthropic_model = "claude-3-haiku-20240307"
-        case "opus":
-            anthropic_model = "claude-3-opus-20240229"
-        case "sonnet":
-            anthropic_model = "claude-3-sonnet-20240229"
-        case "sonnet3.5":
-            anthropic_model = "claude-3-5-sonnet-20240620"
-    if not anthropic_model:
-        return flask.jsonify({"error": "No model provided"})
-
-    client = anthropic.Anthropic(api_key=api_key)
-    message = client.messages.create(
-        model=anthropic_model,
-        max_tokens=4096,
-        messages=[{"role": "user", "content": content}],
+    anthropic_model: Optional[Literal["haiku", "opus", "sonnet", "sonnet3.5"]] = (
+        request_data["model"]
     )
+    if not anthropic_model:
+        raise ValueError("No model provided")
+    res = make_anthropic_request(anthropic_model, content, api_key)
 
-    return json.dumps({"content": str(message.content[0].text)})  # pyright: ignore
+    return json.dumps({"content": res})  # pyright: ignore
 
 
 def _run_server():
