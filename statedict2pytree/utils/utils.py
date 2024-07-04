@@ -1,6 +1,7 @@
 import anthropic
 import numpy as np
 from beartype.typing import Literal, Optional
+from loguru import logger
 
 from statedict2pytree.utils.pydantic_models import JaxField, TorchField
 
@@ -168,7 +169,9 @@ def make_anthropic_request(
         case "sonnet3.5":
             anthropic_model = "claude-3-5-sonnet-20240620"
 
+    logger.info("Creating an instance of the Anthropic client.")
     client = anthropic.Anthropic(api_key=api_key)
+    logger.info("Sending a request to the Anthropic API.")
     message = client.messages.create(
         model=anthropic_model,
         max_tokens=4096,
@@ -193,8 +196,7 @@ def match_using_anthropic(
     for torch_field in torch_fields:
         prompt += f"{torch_field.path}\n"
     prompt += "--PYTORCH END--"
-
-    res = make_anthropic_request(model, api_key, prompt)
+    res = make_anthropic_request(model, prompt, api_key)
     lines = res.split("\n")
     rearrangedTorchFields = []
     for i in range(len(lines)):

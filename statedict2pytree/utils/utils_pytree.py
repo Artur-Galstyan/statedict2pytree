@@ -13,7 +13,9 @@ from tqdm import tqdm
 from statedict2pytree.utils.pydantic_models import ChunkifiedPytreePath, JaxField
 
 
-def chunkify_pytree(tree: PyTree, target_path: str) -> ChunkifiedPytreePath:
+def chunkify_pytree(
+    tree: PyTree, target_path: str
+) -> tuple[ChunkifiedPytreePath, list[JaxField]]:
     """
     Convert a JAX PyTree into chunked files and save them to the specified path.
 
@@ -22,7 +24,8 @@ def chunkify_pytree(tree: PyTree, target_path: str) -> ChunkifiedPytreePath:
         target_path (str): The directory where chunked files will be saved.
 
     Returns:
-        ChunkifiedPytreePath: A path to the chunked files.
+        tuple[ChunkifiedPytreePath, list[JaxField]]: A path to the chunked files
+        and a list of JaxFields.
 
     This function also saves JaxFields as a pickle file in the target directory.
     """
@@ -43,7 +46,7 @@ def chunkify_pytree(tree: PyTree, target_path: str) -> ChunkifiedPytreePath:
     with open(pathlib.Path(target_path) / "jax_fields.pkl", "wb") as f:
         pickle.dump(jax_fields, f)
 
-    return ChunkifiedPytreePath(path=str(pathlib.Path(target_path)))
+    return ChunkifiedPytreePath(path=str(pathlib.Path(target_path))), jax_fields
 
 
 def serialize_pytree_chunks(tree: PyTree, paths: list[ChunkifiedPytreePath], name: str):
