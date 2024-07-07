@@ -10,8 +10,6 @@
       
       
       
-        <link rel="next" href="utils/">
-      
       
       <link rel="icon" href="assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.27">
@@ -252,149 +250,11 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Basic Usage">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-paths-to-chunked-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using Paths to Chunked Files
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-in-memory-structures" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using In-Memory Structures
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#advanced-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      Advanced Usage
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
     </ul>
   
 </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
-        
-          
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
-            
-  
-  <span class="md-ellipsis">
-    API Reference
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2">
-            <span class="md-nav__icon md-icon"></span>
-            API Reference
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="utils/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Utils
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="statedict2pytree/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Statedict2Pytree
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="examples/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Examples
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
       
     </li>
   
@@ -442,39 +302,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Basic Usage">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-paths-to-chunked-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using Paths to Chunked Files
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-in-memory-structures" class="md-nav__link">
-    <span class="md-ellipsis">
-      Using In-Memory Structures
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#advanced-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      Advanced Usage
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
     </ul>
@@ -498,43 +325,93 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>statedict2pytree
 </code></pre></div>
 <h2 id="basic-usage">Basic Usage</h2>
-<p>StateDict2PyTree provides two main ways to convert PyTorch state dicts to JAX pytrees:</p>
-<ol>
-<li>Using paths to chunked files</li>
-<li>Using in-memory structures</li>
-</ol>
-<h3 id="using-paths-to-chunked-files">Using Paths to Chunked Files</h3>
-<p>This method is useful for large models that may not fit in memory.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span> <span class="nn">statedict2pytree</span> <span class="k">as</span> <span class="nn">s2p</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span> <span class="nn">statedict2pytree.utils.utils_state_dict</span> <span class="kn">import</span> <span class="n">chunkify_state_dict</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span> <span class="nn">statedict2pytree.utils.utils_pytree</span> <span class="kn">import</span> <span class="n">chunkify_pytree</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># Chunkify your PyTorch state dict</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">chunkify_state_dict</span><span class="p">(</span><span class="n">torch_state_dict</span><span class="p">,</span> <span class="s2">&quot;path/to/tmp/dir&quot;</span><span class="p">)</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1"># Chunkify your JAX model</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">jax_model</span> <span class="o">=</span> <span class="n">create_your_jax_model</span><span class="p">()</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">chunkify_pytree</span><span class="p">(</span><span class="n">jax_model</span><span class="p">,</span> <span class="s2">&quot;path/to/tmp/dir&quot;</span><span class="p">)</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="c1"># Start the conversion server</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">s2p</span><span class="o">.</span><span class="n">start_conversion_from_paths</span><span class="p">(</span><span class="s2">&quot;path/to/tmp/dir&quot;</span><span class="p">,</span> <span class="s2">&quot;path/to/tmp/dir&quot;</span><span class="p">)</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="c1"># Cancel the server using CTRL+C. This will continue the code execution</span>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="c1"># Load model</span>
+<p>StateDict2PyTree provides two ways to convert PyTorch state dicts to JAX pytrees, depending on if the model fits in your memory or not.</p>
+<p>The main function is the <code>convert</code> function, which can be imported from <code>from statedict2pytree.converter import convert</code> and has these arguments:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">def</span> <span class="nf">convert</span><span class="p">(</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">from_memory</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">from_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">state_dict</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">pytree</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">PyTree</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">path_to_state_dict_object</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">path_to_pytree_object</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">chunkify</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">path_to_state_dict_chunks</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">path_to_pytree_chunks</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="n">arrange_with_anthropic</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">anthropic_model</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;haiku&quot;</span><span class="p">,</span> <span class="s2">&quot;opus&quot;</span><span class="p">,</span> <span class="s2">&quot;sonnet&quot;</span><span class="p">,</span> <span class="s2">&quot;sonnet3.5&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sonnet3.5&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="n">target_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;model.eqx&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    <span class="n">target_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="p">):</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    <span class="o">...</span>
 </code></pre></div>
-<h3 id="using-in-memory-structures">Using In-Memory Structures</h3>
-<p>This method is suitable for smaller models that can fit in memory.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span> <span class="nn">statedict2pytree</span> <span class="k">as</span> <span class="nn">s2p</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">jax_model</span> <span class="o">=</span> <span class="n">create_your_jax_model</span><span class="p">()</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">torch_state_dict</span> <span class="o">=</span> <span class="n">load_your_torch_state_dict</span><span class="p">()</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">s2p</span><span class="o">.</span><span class="n">start_conversion_from_pytree_and_state_dict</span><span class="p">(</span><span class="n">jax_model</span><span class="p">,</span> <span class="n">torch_state_dict</span><span class="p">)</span>
+<p>Depending on which mode you're using (<code>from_memory</code> or <code>from_path</code>), different
+arguments become required. To transform from memory, you need to provide these
+arguments:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>    state_dict: dict[str, torch.Tensor],
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    pytree: PyTree,
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    arrange_with_anthropic: bool,
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    anthropic_model: str,
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    target_dir: str,
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    target_name: str,
 </code></pre></div>
-<p>After running either of these methods, you can access the conversion UI by opening a web browser and navigating to http://localhost:5500</p>
-<h3 id="advanced-usage">Advanced Usage</h3>
-<p>For more advanced usage and API details, please refer to the API Reference.</p>
+<p>(Note that the default parameters are applied)</p>
+<p>If your model does not fit on memory, you would use <code>from_path=True</code>. Here,
+the program splits into 2 paths: either you chunkify the model yourself and
+store them somewhere and provide the path, or you let the program chunkify
+your models in a <code>tempdir</code> (meaning the chunks are deleted afterwards).</p>
+<p>You will need these arguments in that case:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>path_to_state_dict_chunks: Optional[str],
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>path_to_state_dict_object: Optional[str],
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>chunkify: bool,
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>path_to_pytree_chunks: Optional[str],
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>path_to_pytree_object: Optional[str],
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>arrange_with_anthropic: bool,
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>anthropic_model: str,
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>target_dir: str,
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>target_name: str,
+</code></pre></div></p>
+<p>What's important here is to know if your models weights and the weights in the
+state dict are in the <em>right order</em>! This might not always be the case.</p>
+<p>For example, in this case, the conversion will fail:</p>
+<p>PyTree:
+lin1 - Shape: 10, 20
+lin2 - Shape: 20, 20</p>
+<p>State Dict:
+lin2 - Shape: 20, 20
+lin1 - Shape: 10, 20</p>
+<p>This will fail, because <code>s2p</code> will look at the order of the weights and in this case, the shapes don't match.</p>
+<p>You might be wondering now: "why not just match the shapes?" Unfortunately,
+it's not guaranteed that the shapes are unique. Consider this case:</p>
+<p>PyTree:
+lin1 - Shape: 10, 10
+lin2 - Shape: 10, 10
+lin3 - Shape: 10, 10</p>
+<p>State Dict:
+lin3 - Shape: 10, 10
+lin2 - Shape: 10, 10
+lin1 - Shape: 10, 10</p>
+<p>Conversion in this case would succeed, but the resulting model would be incorrect. We could try to infer the order with the names, but after trying
+a couple of algorithms to match the names, nothing really worked. This is why
+you can either:</p>
+<ul>
+<li>use the provided GUI to align the weights yourself</li>
+<li>or use Anthropic's Claude model to align them, without starting the GUI</li>
+</ul>
+<p>To start the GUI, you will need to do the following:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span> <span class="nn">statedict2pytree.app</span> <span class="kn">import</span> <span class="n">start_conversion_from_pytree_and_state_dict</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span> <span class="nn">statedict2pytree.app</span> <span class="kn">import</span> <span class="n">start_conversion_from_paths</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># if in memory:</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">start_conversion_from_pytree_and_state_dict</span><span class="p">(</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="n">pytree</span><span class="p">:</span> <span class="n">PyTree</span><span class="p">,</span> <span class="n">state_dict</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="p">)</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="c1"># else:</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="n">start_conversion_from_paths</span><span class="p">(</span><span class="n">pytree_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">state_dict_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span>
+</code></pre></div>
+<p>This will start a Flask server and you can start aligning your model.</p>
+<p>On the other hand, you can also provide your <code>ANTHROPIC_API_KEY</code> in your
+environment variables and set <code>arrange_with_anthropic</code> to <code>True</code> in the main <code>convert</code> function. It will ask you to confirm if you like the arrangement it made (usually it works on the first try).</p>
 
 
 
