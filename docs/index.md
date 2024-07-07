@@ -9,47 +9,117 @@ pip install statedict2pytree
 ```
 
 ## Basic Usage
-StateDict2PyTree provides two main ways to convert PyTorch state dicts to JAX pytrees:
+StateDict2PyTree provides two ways to convert PyTorch state dicts to JAX pytrees, depending on if the model fits in your memory or not.
 
-1. Using paths to chunked files
-2. Using in-memory structures
-
-### Using Paths to Chunked Files
-This method is useful for large models that may not fit in memory.
+The main function is the `convert` function, which can be imported from `from statedict2pytree.converter import convert` and has these arguments:
 
 ```python
-import statedict2pytree as s2p
-from statedict2pytree.utils.utils_state_dict import chunkify_state_dict
-from statedict2pytree.utils.utils_pytree import chunkify_pytree
-
-# Chunkify your PyTorch state dict
-chunkify_state_dict(torch_state_dict, "path/to/tmp/dir")
-
-# Chunkify your JAX model
-jax_model = create_your_jax_model()
-chunkify_pytree(jax_model, "path/to/tmp/dir")
-
-# Start the conversion server
-s2p.start_conversion_from_paths("path/to/tmp/dir", "path/to/tmp/dir")
-
-# Cancel the server using CTRL+C. This will continue the code execution
-
-# Load model
+def convert(
+    from_memory: Optional[bool] = False,
+    from_path: Optional[bool] = False,
+    state_dict: Optional[dict[str, torch.Tensor]] = None,
+    pytree: Optional[PyTree] = None,
+    path_to_state_dict_object: Optional[str] = None,
+    path_to_pytree_object: Optional[str] = None,
+    chunkify: bool = False,
+    path_to_state_dict_chunks: Optional[str] = None,
+    path_to_pytree_chunks: Optional[str] = None,
+    arrange_with_anthropic: bool = False,
+    anthropic_model: Literal["haiku", "opus", "sonnet", "sonnet3.5"] = "sonnet3.5",
+    target_name: str = "model.eqx",
+    target_dir: str = ".",
+):
+    ...
 ```
 
-### Using In-Memory Structures
-This method is suitable for smaller models that can fit in memory.
+Depending on which mode you're using (`from_memory` or `from_path`), different
+arguments become required. To transform from memory, you need to provide these
+arguments:
+
+```
+    state_dict: dict[str, torch.Tensor],
+    pytree: PyTree,
+    arrange_with_anthropic: bool,
+    anthropic_model: str,
+    target_dir: str,
+    target_name: str,
+```
+
+(Note that the default parameters are applied)
+
+If your model does not fit on memory, you would use `from_path=True`. Here,
+the program splits into 2 paths: either you chunkify the model yourself and
+store them somewhere and provide the path, or you let the program chunkify
+your models in a `tempdir` (meaning the chunks are deleted afterwards).
+
+You will need these arguments in that case:
+```
+path_to_state_dict_chunks: Optional[str],
+path_to_state_dict_object: Optional[str],
+chunkify: bool,
+path_to_pytree_chunks: Optional[str],
+path_to_pytree_object: Optional[str],
+arrange_with_anthropic: bool,
+anthropic_model: str,
+target_dir: str,
+target_name: str,
+```
+
+What's important here is to know if your models weights and the weights in the
+state dict are in the *right order*! This might not always be the case.
+
+For example, in this case, the conversion will fail:
+
+
+PyTree:
+lin1 - Shape: 10, 20
+lin2 - Shape: 20, 20
+
+State Dict:
+lin2 - Shape: 20, 20
+lin1 - Shape: 10, 20
+
+This will fail, because `s2p` will look at the order of the weights and in this case, the shapes don't match.
+
+You might be wondering now: "why not just match the shapes?" Unfortunately,
+it's not guaranteed that the shapes are unique. Consider this case:
+
+
+PyTree:
+lin1 - Shape: 10, 10
+lin2 - Shape: 10, 10
+lin3 - Shape: 10, 10
+
+
+State Dict:
+lin3 - Shape: 10, 10
+lin2 - Shape: 10, 10
+lin1 - Shape: 10, 10
+
+Conversion in this case would succeed, but the resulting model would be incorrect. We could try to infer the order with the names, but after trying
+a couple of algorithms to match the names, nothing really worked. This is why
+you can either:
+
+- use the provided GUI to align the weights yourself
+- or use Anthropic's Claude model to align them, without starting the GUI
+
+To start the GUI, you will need to do the following:
+
 
 ```python
-import statedict2pytree as s2p
+from statedict2pytree.app import start_conversion_from_pytree_and_state_dict
+from statedict2pytree.app import start_conversion_from_paths
 
-jax_model = create_your_jax_model()
-torch_state_dict = load_your_torch_state_dict()
+# if in memory:
+start_conversion_from_pytree_and_state_dict(
+    pytree: PyTree, state_dict: dict[str, torch.Tensor]
+)
 
-s2p.start_conversion_from_pytree_and_state_dict(jax_model, torch_state_dict)
+# else:
+start_conversion_from_paths(pytree_path: str, state_dict_path: str)
 ```
 
-After running either of these methods, you can access the conversion UI by opening a web browser and navigating to http://localhost:5500
+This will start a Flask server and you can start aligning your model.
 
-### Advanced Usage
-For more advanced usage and API details, please refer to the API Reference.
+On the other hand, you can also provide your `ANTHROPIC_API_KEY` in your
+environment variables and set `arrange_with_anthropic` to `True` in the main `convert` function. It will ask you to confirm if you like the arrangement it made (usually it works on the first try).

@@ -145,7 +145,7 @@ def test_conversion_from_path_without_chunks():
         convert(
             path_to_pytree_object="temp_module.pytree",
             path_to_pytree_chunks=pt_chunks.path,
-            path_to_statedict_chunks=sd_chunks.path,
+            path_to_state_dict_chunks=sd_chunks.path,
             target_name=name,
             from_path=from_path,
             chunkify=False,
