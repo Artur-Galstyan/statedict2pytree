@@ -11,7 +11,7 @@ from statedict2pytree.utils.pydantic_models import ChunkifiedStatedictPath, Torc
 
 def chunkify_state_dict(
     state_dict: dict[str, np.ndarray], target_path: str
-) -> list[ChunkifiedStatedictPath]:
+) -> tuple[ChunkifiedStatedictPath, list[TorchField]]:
     """
     Convert a PyTorch state dict into chunked files and save them to the specified path.
 
@@ -20,7 +20,9 @@ def chunkify_state_dict(
         target_path (str): The directory where chunked files will be saved.
 
     Returns:
-        list[ChunkifiedStatedictPath]: A list of paths to the chunked files.
+        tuple[ChunkifiedStatedictPath, list[TorchField]]: A path to the chunked files
+        and a list of TorchFields.
+
 
     This function also saves TorchFields as a pickle file in the target directory.
     """
@@ -33,14 +35,12 @@ def chunkify_state_dict(
 
         if not os.path.exists(path):
             os.mkdir(path)
-
         np.save(path / key, state_dict[key])
-        paths.append(ChunkifiedStatedictPath(path=str(path / key)))
 
     torch_fields = state_dict_to_fields(state_dict)
     with open(pathlib.Path(target_path) / "torch_fields.pkl", "wb") as f:
         pickle.dump(torch_fields, f)
-    return paths
+    return ChunkifiedStatedictPath(path=str(pathlib.Path(target_path))), torch_fields
 
 
 def state_dict_to_fields(state_dict: Optional[dict]) -> list[TorchField]:
@@ -59,4 +59,10 @@ def state_dict_to_fields(state_dict: Optional[dict]) -> list[TorchField]:
     for key, value in state_dict.items():
         if hasattr(value, "shape") and len(value.shape) > 0:
             fields.append(TorchField(path=key, shape=tuple(value.shape)))
+    return fields
+
+
+def pad_with_skip_layers(fields: list[TorchField], n: int) -> list[TorchField]:
+    for _ in range(n):
+        fields.append(TorchField(path="SKIP", shape=(), skip=True))
     return fields

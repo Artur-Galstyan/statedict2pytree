@@ -1,10 +1,8 @@
-import functools as ft
 import json
 import os
 import pathlib
 import pickle
 
-import anthropic
 import equinox as eqx
 import flask
 import numpy as np
@@ -12,16 +10,20 @@ import torch
 from beartype.typing import Literal, Optional
 from dotenv import load_dotenv
 from jaxtyping import PyTree
-from tqdm import tqdm
 
+from statedict2pytree.converter import (
+    convert_from_path,
+    convert_from_pytree_and_state_dict,
+)
 from statedict2pytree.utils.pydantic_models import (
     ChunkifiedPytreePath,
     ChunkifiedStatedictPath,
-    JaxField,
-    TorchField,
 )
-from statedict2pytree.utils.utils import can_reshape, field_jsons_to_fields
-from statedict2pytree.utils.utils_pytree import get_node, pytree_to_fields
+from statedict2pytree.utils.utils import (
+    field_jsons_to_fields,
+    make_anthropic_request,
+)
+from statedict2pytree.utils.utils_pytree import pytree_to_fields
 from statedict2pytree.utils.utils_state_dict import state_dict_to_fields
 
 
@@ -161,162 +163,6 @@ def _convert_torch_to_jax():
     return flask.jsonify({"status": "success"})
 
 
-def autoconvert_state_dict_to_pytree(
-    pytree: PyTree, state_dict: dict
-) -> tuple[PyTree, eqx.nn.State]:
-    """
-    Automatically convert a PyTorch state dict to a JAX pytree.
-
-    Args:
-        pytree (PyTree): The target JAX pytree structure.
-        state_dict (dict): The source PyTorch state dict.
-
-    Returns:
-        tuple: A tuple containing the converted pytree and its associated state.
-    """
-    jax_fields = pytree_to_fields(pytree)
-    torch_fields = state_dict_to_fields(state_dict)
-
-    for k, v in state_dict.items():
-        state_dict[k] = v.numpy()
-    return convert_from_pytree_and_state_dict(
-        jax_fields, torch_fields, pytree, state_dict
-    )
-
-
-def autoconvert_from_paths(
-    chunkified_pytree_path: ChunkifiedPytreePath,
-    chunkified_state_dict_path: ChunkifiedStatedictPath,
-):
-    """
-    Automatically convert PyTorch state dict to JAX pytree using file paths.
-
-    To "make" the paths, use
-    `statedict2pytree.utils.utils_state_dict.chunkify_state_dict`.
-    `statedict2pytree.utils.utils_pytree.chunkify_pytree`.
-
-    Args:
-        chunkified_pytree_path (ChunkifiedPytreePath): Path to the JAX pytree
-        pickle file.
-        chunkified_state_dict_path (ChunkifiedStatedictPath): Path to the
-        PyTorch state dict pickle file.
-    """
-    with open(
-        str(pathlib.Path(chunkified_pytree_path.path) / "jax_fields.pkl"), "rb"
-    ) as f:
-        jax_fields = pickle.load(f)
-
-    with open(
-        str(pathlib.Path(chunkified_state_dict_path.path) / "torch_fields.pkl"), "rb"
-    ) as f:
-        torch_fields = pickle.load(f)
-    convert_from_path(
-        jax_fields, torch_fields, chunkified_pytree_path, chunkified_state_dict_path
-    )
-
-
-def convert_from_path(
-    jax_fields: list[JaxField],
-    torch_fields: list[TorchField],
-    chunkified_pytree_path: ChunkifiedPytreePath,
-    chunkified_statedict_path: ChunkifiedStatedictPath,
-):
-    """
-    Convert PyTorch state dict to JAX pytree using file paths and field mappings.
-
-    Args:
-        jax_fields (list[JaxField]): List of JAX fields.
-        torch_fields (list[TorchField]): List of PyTorch fields.
-        chunkified_pytree_path (ChunkifiedPytreePath): Path to the
-        JAX pytree directory.
-        chunkified_statedict_path (ChunkifiedStatedictPath): Path to the
-        PyTorch state dict directory.
-
-    Raises:
-        ValueError: If fields have incompatible shapes.
-    """
-    j_path = pathlib.Path(chunkified_pytree_path.path)
-    t_path = pathlib.Path(chunkified_statedict_path.path)
-
-    for jax_field, torch_field in tqdm(zip(jax_fields, torch_fields)):
-        if torch_field.skip:
-            continue
-        if not can_reshape(jax_field.shape, torch_field.shape):
-            raise ValueError(
-                "Fields have incompatible shapes!"
-                f"{jax_field.shape=} != {torch_field.shape=}"
-            )
-        pt_path = pathlib.Path(j_path) / "pytree" / jax_field.path
-        sd_path = pathlib.Path(t_path) / "state_dict" / torch_field.path
-
-        if pt_path.exists():
-            os.remove(pt_path)
-        np.save(pt_path, np.load(str(sd_path) + ".npy"))
-
-
-def convert_from_pytree_and_state_dict(
-    jax_fields: list[JaxField],
-    torch_fields: list[TorchField],
-    pytree: PyTree,
-    state_dict: dict[str, np.ndarray],
-) -> tuple[PyTree, eqx.nn.State]:
-    """
-    Convert PyTorch state dict to JAX pytree using
-    in-memory structures and field mappings.
-
-    Args:
-        jax_fields (list[JaxField]): List of JAX fields.
-        torch_fields (list[TorchField]): List of PyTorch fields.
-        pytree (PyTree): The target JAX pytree structure.
-        state_dict (dict[str, np.ndarray]): The source PyTorch state dict.
-
-    Returns:
-        tuple: A tuple containing the converted pytree and its associated state.
-
-    Raises:
-        ValueError: If fields have incompatible shapes.
-    """
-    identity = lambda *args, **kwargs: pytree
-    model, state = eqx.nn.make_with_state(identity)()
-    state_paths: list[tuple[JaxField, TorchField]] = []
-    for i in range(len(jax_fields)):
-        torch_field = torch_fields[i]
-        jax_field = jax_fields[i]
-        if torch_field.skip:
-            continue
-        if not can_reshape(jax_field.shape, torch_field.shape):
-            raise ValueError(
-                "Fields have incompatible shapes! "
-                f"{jax_field.shape=} != {torch_field.shape=}"
-            )
-        path = jax_field.path.split(".")[1:]
-        if "StateIndex" in jax_field.type:
-            state_paths.append((jax_field, torch_field))
-
-        else:
-            where = ft.partial(get_node, targets=path)
-            if where(model) is not None:
-                model = eqx.tree_at(
-                    where,
-                    model,
-                    state_dict[torch_field.path].reshape(jax_field.shape),
-                )
-    result: dict[str, list[TorchField]] = {}
-    for tuple_item in state_paths:
-        path_prefix = tuple_item[0].path.split(".")[1:-1]
-        prefix_key = ".".join(path_prefix)
-        if prefix_key not in result:
-            result[prefix_key] = []
-        result[prefix_key].append(tuple_item[1])
-
-    for key in result:
-        state_index = get_node(model, key.split("."))
-        if state_index is not None:
-            to_replace_tuple = tuple([state_dict[i.path] for i in result[key]])
-            state = state.set(state_index, to_replace_tuple)
-    return model, state
-
-
 def start_conversion_from_paths(pytree_path: str, state_dict_path: str):
     """
     Initialize the conversion process using file paths and start the Flask server.
@@ -352,7 +198,7 @@ def start_conversion_from_pytree_and_state_dict(
 
 
 @app.post("/anthropic")
-def make_anthropic_request():
+def match_with_anthropic_endpoint():
     """
     Make a request to the Anthropic API using the provided content and model.
 
@@ -376,29 +222,14 @@ def make_anthropic_request():
         return flask.jsonify({"error": "There was no model provided"})
 
     content = request_data["content"]
-
-    anthropic_model: Optional[str] = None
-
-    match request_data["model"]:
-        case "haiku":
-            anthropic_model = "claude-3-haiku-20240307"
-        case "opus":
-            anthropic_model = "claude-3-opus-20240229"
-        case "sonnet":
-            anthropic_model = "claude-3-sonnet-20240229"
-        case "sonnet3.5":
-            anthropic_model = "claude-3-5-sonnet-20240620"
-    if not anthropic_model:
-        return flask.jsonify({"error": "No model provided"})
-
-    client = anthropic.Anthropic(api_key=api_key)
-    message = client.messages.create(
-        model=anthropic_model,
-        max_tokens=4096,
-        messages=[{"role": "user", "content": content}],
+    anthropic_model: Optional[Literal["haiku", "opus", "sonnet", "sonnet3.5"]] = (
+        request_data["model"]
     )
+    if not anthropic_model:
+        raise ValueError("No model provided")
+    res = make_anthropic_request(anthropic_model, content, api_key)
 
-    return json.dumps({"content": str(message.content[0].text)})  # pyright: ignore
+    return json.dumps({"content": res})  # pyright: ignore
 
 
 def _run_server():

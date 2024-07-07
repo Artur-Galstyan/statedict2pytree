@@ -8,7 +8,7 @@ from jaxonmodels.transformers.llama.llama3 import LLaMA
 from jaxonmodels.transformers.llama.model_args import LLaMAModelArgs
 from loguru import logger
 from memory_profiler import profile
-from statedict2pytree.statedict2pytree import start_conversion_from_paths
+from statedict2pytree.app import start_conversion_from_paths
 from statedict2pytree.utils.utils_pytree import chunkify_pytree, serialize_pytree_chunks
 from statedict2pytree.utils.utils_state_dict import chunkify_state_dict
 from tqdm import tqdm
