@@ -161,13 +161,13 @@ def make_anthropic_request(
 
     match model:
         case "haiku":
-            anthropic_model = "claude-3-haiku-20240307"
+            anthropic_model = "claude-3-haiku-latest"
         case "opus":
             anthropic_model = "claude-3-opus-20240229"
         case "sonnet":
             anthropic_model = "claude-3-sonnet-20240229"
         case "sonnet3.5":
-            anthropic_model = "claude-3-5-sonnet-20240620"
+            anthropic_model = "claude-3-5-sonnet-latest"
 
     logger.info("Creating an instance of the Anthropic client.")
     client = anthropic.Anthropic(api_key=api_key)

@@ -8,17 +8,16 @@ import jax.numpy as jnp
 import numpy as np
 import torch
 from PIL import Image
+from resnet_model import resnet18
 from torchvision import transforms
 from torchvision.models import resnet18 as t_resnet18, ResNet18_Weights
-
-from examples.resnet.resnet import resnet18  # pyright: ignore
 
 
 def test_resnet():
     resnet_jax = resnet18(key=jax.random.PRNGKey(33), make_with_state=False)
     resnet_torch = t_resnet18(weights=ResNet18_Weights.DEFAULT)
 
-    img_name = "doggo.jpeg"
+    img_name = "examples/resnet/doggo.jpeg"
 
     transform = transforms.Compose(
         [
@@ -54,7 +53,7 @@ def test_resnet():
     model_callable = ft.partial(identity, resnet_jax)
     model, state = eqx.nn.make_with_state(model_callable)()
 
-    model, state = eqx.tree_deserialise_leaves("model.eqx", (model, state))
+    model, state = eqx.tree_deserialise_leaves("resnet18.eqx", (model, state))
 
     jax_batch = jnp.array(batch_t.numpy())
     out, state = eqx.filter_vmap(

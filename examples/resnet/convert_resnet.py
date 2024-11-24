@@ -1,6 +1,6 @@
 import jax
-import statedict2pytree.app as s2p
 from resnet_model import resnet18
+from statedict2pytree.converter import convert
 from torchvision.models import resnet18 as t_resnet18, ResNet18_Weights
 
 
@@ -9,11 +9,14 @@ def convert_resnet():
     resnet_torch = t_resnet18(weights=ResNet18_Weights.DEFAULT)
     state_dict = resnet_torch.state_dict()
 
-    s2p.start_conversion_from_pytree_and_state_dict(resnet_jax, state_dict)
+    # s2p.start_conversion_from_pytree_and_state_dict(resnet_jax, state_dict)
 
-    # model, state = s2p.autoconvert(resnet_jax, state_dict)
-    # name = "resnet18.eqx"
-    # eqx.tree_serialise_leaves(name, (model, state))
+    convert(
+        from_memory=True,
+        state_dict=state_dict,
+        pytree=resnet_jax,
+        target_name="resnet18.eqx",
+    )
 
 
 if __name__ == "__main__":
