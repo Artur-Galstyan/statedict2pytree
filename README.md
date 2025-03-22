@@ -2,6 +2,10 @@
 
 ![statedict2pytree](statedict2pytree.png "A ResNet demo")
 
+## Update:
+
+I have started to migrate this package to my other repository (Jaxonmodels)[https://github.com/Artur-Galstyan/jaxonmodels] and will soon(-ish) archive this repository in favor of (Jaxonmodels)[https://github.com/Artur-Galstyan/jaxonmodels]. 
+
 ## Docs
 
 Docs can be found [here](https://artur-galstyan.github.io/statedict2pytree/).
@@ -47,3 +51,4 @@ Currently, there is no sophisticated shape matching in place. Two matrices are c
 
 Some of the docstrings and the docs have been written with the help of
 Claude.
+
