@@ -4,7 +4,7 @@
 
 ## Update:
 
-I have started to migrate this package to my other repository (Jaxonmodels)[https://github.com/Artur-Galstyan/jaxonmodels] and will soon(-ish) archive this repository in favor of (Jaxonmodels)[https://github.com/Artur-Galstyan/jaxonmodels]. 
+I have started to migrate this package to my other repository [jaxonmodels](https://github.com/Artur-Galstyan/jaxonmodels) and will soon(-ish) archive this repository in favor of [jaxonmodels](https://github.com/Artur-Galstyan/jaxonmodels).
 
 ## Docs
 
