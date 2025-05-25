@@ -1,6 +1,6 @@
 [project]
 name = "statedict2pytree"
-version = "0.6.1"
+version = "1.0.0"
 description = "Converts torch models into PyTrees for Equinox"
 readme = "README.md"
 requires-python = "~=3.10"
@@ -10,52 +10,15 @@ dependencies = [
     "equinox",
     "jaxlib",
     "beartype",
-    "typing_extensions",
-    "loguru",
     "jaxtyping",
-    "torch",
-    "flask",
     "pydantic",
-    "penzai",
-    "torchvision",
-    "anthropic",
-    "python-dotenv",
-    "pytest",
+    "tqdm",
 ]
+
 [project.optional-dependencies]
-dev = ["nox", "pre-commit", "pytest", "mkdocs"]
+dev = ["pre-commit", "pytest", "mkdocs", "torch"]
 examples = ["jaxonmodels"]
-
-[tool.ruff]
-extend-include = ["*.ipynb"]
-src = []
-
-[tool.ruff.lint]
-fixable = ["I001", "F401"]
-ignore = ["E402", "E721", "E731", "E741", "F722", "F841", "F821"]
-ignore-init-module-imports = true
-select = ["E", "F", "I001"]
-
-[tool.ruff.lint.isort]
-combine-as-imports = true
-extra-standard-library = ["typing_extensions"]
-lines-after-imports = 2
-order-by-type = false
-
-[tool.pyright]
-reportIncompatibleMethodOverride = true
-reportMissingImports = false
-include = ["statedict2pytree", "tests", "examples"]
-exclude = ["testing_ground", "examples/llama/tokenizer.py"]
-
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-
-[tool.hatch.metadata]
-allow-direct-references = true
-
-[tool.hatch.build]
-include = ['client/']

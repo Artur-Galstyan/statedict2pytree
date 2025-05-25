@@ -25,12 +25,20 @@ def test_linear():
             self.linear = torch.nn.Linear(in_features, out_features)
             self.norm = torch.nn.BatchNorm1d(out_features)
 
-    jax_model = J()
+    model, state = eqx.nn.make_with_state(J)()
+    print(model, state)
     torch_model = T()
     state_dict = torch_model.state_dict()
 
-    model, state = s2p.autoconvert_state_dict_to_pytree(
-        pytree=jax_model, state_dict=state_dict
+    torchfields = s2p.state_dict_to_fields(state_dict)
+    torchfields = s2p.move_running_fields_to_the_end(torchfields)
+
+    jaxfields, state_indices = s2p.pytree_to_fields(
+        (model, state), filter=s2p.is_numerical
+    )
+
+    model, state = s2p.convert(
+        state_dict, (model, state), jaxfields, state_indices, torchfields
     )
 
     assert np.allclose(
