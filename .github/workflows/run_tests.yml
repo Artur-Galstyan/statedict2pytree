@@ -12,19 +12,27 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v1
+
+      - name: Create virtual environment and install dependencies
+        run: |
+          uv venv --python ${{ matrix.python-version }}
+          source .venv/bin/activate
+          uv pip install -e ".[dev]"
+          uv pip install -e .
 
       - name: Run pre-commit hooks
         uses: pre-commit/action@v3.0.1
 
       - name: Run tests
         run: |
-          uv venv && source .venv/bin/activate && uv pip install -e ".[dev]" && uv pip install -e . && python3 -m pytest
+          source .venv/bin/activate
+          python3 -m pytest
