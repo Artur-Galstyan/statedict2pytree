@@ -1,31 +1,19 @@
 # statedict2pytree
 
-![statedict2pytree](statedict2pytree.png "A ResNet demo")
 
 ## Update:
 
-I have started to migrate this package to my other repository [jaxonmodels](https://github.com/Artur-Galstyan/jaxonmodels) and will soon(-ish) archive this repository in favor of [jaxonmodels](https://github.com/Artur-Galstyan/jaxonmodels).
+For examples for `statedict2pytree`, check out my other repository [jaxonmodels](https://github.com/Artur-Galstyan/jaxonmodels).
 
 ## Docs
 
 Docs can be found [here](https://artur-galstyan.github.io/statedict2pytree/).
 
 
-## Important
-
-This package is still in its infancy and hihgly experimental! The code works, but it's far from perfect. With more and more iterations, it will eventually become stable and well tested.
-PRs and other contributions are *highly* welcome! :)
-
 ## Info
 
-`statedict2pytree` is a powerful tool for converting PyTorch state dictionaries to JAX pytrees. It provides both programmatic and UI-based methods for mapping between PyTorch and JAX model parameters.
+`statedict2pytree` is a powerful tool for converting PyTorch state dictionaries to JAX pytrees, specifically for Equinox
 
-## Features
-
-- Convert PyTorch statedicts to JAX pytrees
-- Handle large models with chunked file conversion
-- Provide an "intuitive-ish" UI for parameter mapping
-- Support both in-memory and file-based conversions
 
 ## Installation
 
@@ -37,14 +25,12 @@ The goal of this package is to simplify the conversion from PyTorch models into 
 
 Usually, if you _declared the fields in the same order as in the PyTorch model_, you don't have to rearrange anything -- but the option is there if you need it.
 
-(Theoretically, you can rearrange the model in any way you like - e.g. last layer as the first layer - as long as the shapes match!)
 
 ## Shape Matching? What's that?
 
 Currently, there is no sophisticated shape matching in place. Two matrices are considered "matching" if the product of their shape match. For example:
 
 (8, 1, 1) and (8, ) match, because (8 _ 1 _ 1 = 8)
-
 
 
 ### Disclaimer

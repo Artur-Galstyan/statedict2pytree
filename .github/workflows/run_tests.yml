@@ -6,37 +6,33 @@ jobs:
   run-test:
     strategy:
       matrix:
-        python-version: ["3.10", 3.12]
+        python-version: ["3.10"]
         os: [ubuntu-latest]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install uv
-          uv venv
-          source .venv/bin/activate
-          uv pip install -e .
-          uv pip install -r examples/requirements.txt
+      - name: Install uv
+        uses: astral-sh/setup-uv@v1
 
-      - name: Checks with pre-commit
-        uses: pre-commit/action@v2.0.3
-
-      - name: Test with pytest
+      - name: Create virtual environment and install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install uv
-          uv venv
+          uv venv --python ${{ matrix.python-version }}
           source .venv/bin/activate
+          uv pip install -e ".[dev]"
           uv pip install -e .
-          uv pip install -r examples/requirements.txt
-          python -m pytest
+
+      - name: Run pre-commit hooks
+        uses: pre-commit/action@v3.0.1
+
+      - name: Run tests
+        run: |
+          source .venv/bin/activate
+          python3 -m pytest
