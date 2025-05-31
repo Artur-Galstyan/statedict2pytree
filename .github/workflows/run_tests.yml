@@ -26,9 +26,7 @@ jobs:
         run: uv venv && source .venv/bin/activate && uv pip install -e ".[dev]" && uv pip install -e .
 
       - name: Run pre-commit hooks
-        run: |
-          uv pip install pre-commit
-          pre-commit run --all-files
+        uses: pre-commit/action@v3.0.1
 
       - name: Run tests
         run: |
