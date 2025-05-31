@@ -26,7 +26,6 @@ jobs:
           uv venv
           source .venv/bin/activate
           uv pip install -e .
-          uv pip install -r examples/requirements.txt
 
       - name: Checks with pre-commit
         uses: pre-commit/action@v2.0.3
@@ -38,5 +37,4 @@ jobs:
           uv venv
           source .venv/bin/activate
           uv pip install -e .
-          uv pip install -r examples/requirements.txt
           python -m pytest
