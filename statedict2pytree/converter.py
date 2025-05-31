@@ -267,9 +267,9 @@ def convert(
 
             n, _ = _get_node(pytree, j.path, state_indices)
             assert n is not None, f"Node {j.path} not found"
-            assert _can_reshape(
-                n.shape, new_value.shape
-            ), f"Cannot reshape {n.shape} into {new_value.shape}"
+            assert _can_reshape(n.shape, new_value.shape), (
+                f"Cannot reshape {n.shape} into {new_value.shape}"
+            )
 
             pytree = _replace_node(pytree, j.path, new_value, state_indices)
 
