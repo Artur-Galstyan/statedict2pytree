@@ -1,5 +1,10 @@
 # statedict2pytree
 
+
+## Update:
+
+For examples for `statedict2pytree`, check out my other repository [jaxonmodels](https://github.com/Artur-Galstyan/jaxonmodels).
+
 ## Docs
 
 Docs can be found [here](https://artur-galstyan.github.io/statedict2pytree/).
@@ -32,3 +37,4 @@ Currently, there is no sophisticated shape matching in place. Two matrices are c
 
 Some of the docstrings and the docs have been written with the help of
 Claude.
+
