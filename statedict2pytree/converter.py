@@ -94,7 +94,7 @@ def _get_node(
         if len(path) == 0:
             return tree, state_indices
     f, *_ = path
-    if hasattr(tree, "is_stateful"):
+    if hasattr(tree, "is_stateful") and tree.is_stateful():
         if state_indices is None:
             state_indices = {}
         indices = _get_stateindex_fields(tree)
@@ -109,7 +109,10 @@ def _get_node(
     elif isinstance(f, FlattenedIndexKey):
         if isinstance(tree, eqx.nn.State):
             assert state_indices is not None
-            index = state_indices[f.key]
+
+            markers = list(tree._state.keys())
+            marker = markers[f.key]
+            index = state_indices[marker]
             subtree = tree.get(index)
         else:
             subtree = None

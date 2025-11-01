@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 authors = [{ name = "Artur A. Galstyan", email = "mail@arturgalstyan.dev" }]
 dependencies = [
     "jax",
-    "equinox",
+    "equinox>=0.13.0",
     "jaxlib",
     "beartype",
     "jaxtyping",
