@@ -28,7 +28,8 @@ class TorchField(BaseModel):
 
 
 class JaxField(BaseModel):
-    path: KeyPath
+    key_path: KeyPath
+    path: str
     shape: tuple[int, ...]
     skip: bool = False
 
@@ -45,7 +46,7 @@ def is_numerical(element: Any):
 
 
 def _default_floating_dtype():
-    if jax.config.jax_enable_x64:  # pyright: ignore
+    if jax.config.jax_enable_x64:  # ty: ignore
         return jnp.float64
     else:
         return jnp.float32
@@ -86,14 +87,14 @@ def _get_stateindex_fields(obj) -> dict:
 
 
 def _get_node(
-    tree: PyTree, path: KeyPath, state_indices: dict | None = None
+    tree: PyTree, key_path: KeyPath, state_indices: dict | None = None
 ) -> tuple[PyTree | None, dict | None]:
     if tree is None:
         return None, {}
     else:
-        if len(path) == 0:
+        if len(key_path) == 0:
             return tree, state_indices
-    f, *_ = path
+    f, *_ = key_path
     if hasattr(tree, "is_stateful") and tree.is_stateful():
         if state_indices is None:
             state_indices = {}
@@ -118,17 +119,17 @@ def _get_node(
             subtree = None
     else:
         subtree = None
-    return _get_node(subtree, path[1:], state_indices)
+    return _get_node(subtree, key_path[1:], state_indices)
 
 
 def _replace_node(
-    tree: PyTree, path: KeyPath, new_value: Array, state_indices: dict | None = None
+    tree: PyTree, key_path: KeyPath, new_value: Array, state_indices: dict | None = None
 ) -> PyTree:
     def where_wrapper(t):
-        node, _ = _get_node(t, path=path, state_indices=state_indices)
+        node, _ = _get_node(t, key_path=key_path, state_indices=state_indices)
         return node
 
-    node, _ = _get_node(tree, path=path, state_indices=state_indices)
+    node, _ = _get_node(tree, key_path=key_path, state_indices=state_indices)
 
     if node is not None and eqx.is_array(node):
         tree = eqx.tree_at(
@@ -137,8 +138,46 @@ def _replace_node(
             new_value.reshape(node.shape),
         )
     else:
-        print("WARNING: Couldn't find: ", jax.tree_util.keystr(path))
+        print("WARNING: Couldn't find: ", jax.tree_util.keystr(key_path))
     return tree
+
+
+def _resolve_state_names(pytree: PyTree, key_path: KeyPath) -> str:
+    parts = []
+    current = pytree
+
+    for i, key in enumerate(key_path):
+        if isinstance(key, GetAttrKey):
+            parts.append(key.name)
+            current = getattr(current, key.name)
+        elif isinstance(key, SequenceKey):
+            if i == 0 and isinstance(pytree, tuple) and len(pytree) == 2:
+                current = current[key.idx]
+                continue
+            current = current[key.idx]
+            parts.append(str(key.idx))
+        elif isinstance(key, FlattenedIndexKey):
+            if isinstance(current, eqx.nn.State):
+                markers = list(current._state.keys())
+                marker = markers[key.key]
+                clean_marker = marker.split(".", 1)[-1] if "." in marker else marker
+                parts.append(clean_marker)
+                current = current._state[marker]
+        else:
+            parts.append(str(key))
+
+    return ".".join(parts)
+
+
+def _normalize_eqx_name(path: str) -> str:
+    if "batch_state_index.0" in path:
+        return path.replace("batch_state_index.0", "running_mean")
+    if "batch_state_index.1" in path:
+        return path.replace("batch_state_index.1", "running_var")
+    if "batch_counter" in path:
+        return path.replace("batch_counter", "num_batches_tracked")
+
+    return path
 
 
 def move_running_fields_to_the_end(
@@ -162,14 +201,16 @@ def move_running_fields_to_the_end(
 
 
 def state_dict_to_fields(
-    state_dict: dict[str, Any],
+    state_dict: dict[str, Any], sort_by_path: bool = True
 ) -> list[TorchField]:
     if state_dict is None:
         return []
     fields: list[TorchField] = []
     for key, value in state_dict.items():
-        if hasattr(value, "shape") and len(value.shape) > 0:
+        if hasattr(value, "shape"):
             fields.append(TorchField(path=key, shape=tuple(value.shape)))
+
+    fields.sort(key=lambda x: x.path)
     return fields
 
 
@@ -177,17 +218,29 @@ def pytree_to_fields(
     pytree: PyTree,
     model_order: list[str] | None = None,
     filter: Callable[[Array], bool] = eqx.is_array,
+    sort_by_path: bool = True,
 ) -> tuple[list[JaxField], dict | None]:
     jaxfields = []
     paths = jax.tree.leaves_with_path(pytree)
-    i = {}
+    state_indices = {}
     for p in paths:
         keys, _ = p
-        n, i = _get_node(pytree, keys, i)
+        n, state_indices = _get_node(pytree, keys, state_indices)
         if n is not None and filter(n):
-            jaxfields.append(JaxField(path=keys, shape=n.shape))
+            readable_path = _resolve_state_names(pytree, keys)
+            jaxfields.append(
+                JaxField(
+                    key_path=keys,
+                    shape=n.shape,
+                    path=_normalize_eqx_name(readable_path),
+                )
+            )
 
     if model_order is not None:
+        if sort_by_path:
+            raise ValueError(
+                "model_order is given and sort_by_path is true. Only one of those is allowed"
+            )
         ordered_jaxfields = []
         path_dict = {jax.tree_util.keystr(field.path): field for field in jaxfields}
 
@@ -197,7 +250,9 @@ def pytree_to_fields(
                 del path_dict[path_str]
         ordered_jaxfields.extend(path_dict.values())
         jaxfields = ordered_jaxfields
-    return jaxfields, i
+    elif sort_by_path:
+        jaxfields.sort(key=lambda j: j.path)
+    return jaxfields, state_indices
 
 
 def _chunkify_state_dict(
@@ -248,7 +303,9 @@ def convert(
     if len(torchfields) != len(jaxfields):
         raise ValueError(
             f"Length of state_dict ({len(torchfields)}) "
-            f"!= length of pytree ({len(jaxfields)})"
+            f"!= length of pytree ({len(jaxfields)}) "
+            "Note: if you are using BatchNorm in Equinox, make sure to "
+            'add BatchNorm(..., mode="batch"), which might fix your issue!'
         )
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -262,28 +319,34 @@ def convert(
                     "Note that the order of the fields matters "
                     "and that you can mark arrays as skippable. "
                     f"{t.path=} "
-                    f"{jax.tree_util.keystr(j.path)=}"
+                    f"{jax.tree_util.keystr(j.key_path)=} ({j.path})"
                 )
             state_dict_dir = pathlib.Path(chunkified_statedict_path.path) / "state_dict"
             filename = state_dict_dir / t.path
             new_value = jnp.array(np.load(str(filename) + ".npy"))
 
-            n, _ = _get_node(pytree, j.path, state_indices)
-            assert n is not None, f"Node {j.path} not found"
+            n, _ = _get_node(pytree, j.key_path, state_indices)
+            assert n is not None, f"Node {j.key_path} not found"
             assert _can_reshape(n.shape, new_value.shape), (
                 f"Cannot reshape {n.shape} into {new_value.shape}"
             )
 
-            pytree = _replace_node(pytree, j.path, new_value, state_indices)
+            pytree = _replace_node(pytree, j.key_path, new_value, state_indices)
 
     return pytree
 
 
 def autoconvert(
-    pytree: PyTree, state_dict: dict, pytree_model_order: list[str] | None = None
+    pytree: PyTree,
+    state_dict: dict,
+    filter: Callable[[Array], bool] = eqx.is_array,
+    pytree_model_order: list[str] | None = None,
+    sort_by_path: bool = True,
 ) -> PyTree:
-    torchfields = state_dict_to_fields(state_dict)
-    jaxfields, state_indices = pytree_to_fields(pytree, pytree_model_order)
+    torchfields = state_dict_to_fields(state_dict, sort_by_path)
+    jaxfields, state_indices = pytree_to_fields(
+        pytree, pytree_model_order, filter=filter, sort_by_path=sort_by_path
+    )
 
     pytree = convert(
         state_dict,

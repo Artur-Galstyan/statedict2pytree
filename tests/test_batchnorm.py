@@ -1,8 +1,9 @@
 import equinox as eqx
 import jax
 import numpy as np
-import statedict2pytree as s2p
 import torch
+
+import statedict2pytree as s2p
 
 
 def test_linear():
@@ -17,7 +18,9 @@ def test_linear():
             self.linear = eqx.nn.Linear(
                 in_features, out_features, key=jax.random.PRNGKey(30)
             )
-            self.norm = eqx.nn.BatchNorm(input_size=out_features, axis_name="batch")
+            self.norm = eqx.nn.BatchNorm(
+                input_size=out_features, axis_name="batch", mode="batch"
+            )
 
     class T(torch.nn.Module):
         def __init__(self) -> None:
@@ -31,7 +34,6 @@ def test_linear():
     state_dict = torch_model.state_dict()
 
     torchfields = s2p.state_dict_to_fields(state_dict)
-    torchfields = s2p.move_running_fields_to_the_end(torchfields)
 
     jaxfields, state_indices = s2p.pytree_to_fields(
         (model, state), filter=s2p.is_numerical

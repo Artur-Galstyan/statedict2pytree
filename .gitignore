@@ -161,3 +161,4 @@ cython_debug/
 node_modules/
 examples/llama/Meta-Llama-3-8B/
 .zed/
+main.py
