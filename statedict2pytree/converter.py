@@ -342,18 +342,13 @@ def autoconvert(
     filter: Callable[[Array], bool] = eqx.is_array,
     pytree_model_order: list[str] | None = None,
     sort_by_path: bool = True,
+    dtype: Any | None = None,
 ) -> PyTree:
     torchfields = state_dict_to_fields(state_dict, sort_by_path)
     jaxfields, state_indices = pytree_to_fields(
         pytree, pytree_model_order, filter=filter, sort_by_path=sort_by_path
     )
 
-    pytree = convert(
-        state_dict,
-        pytree,
-        jaxfields,
-        state_indices,
-        torchfields,
-    )
+    pytree = convert(state_dict, pytree, jaxfields, state_indices, torchfields, dtype)
 
     return pytree
