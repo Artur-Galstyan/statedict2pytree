@@ -1,5 +1,6 @@
 import os
 import pathlib
+import re
 import tempfile
 
 import equinox as eqx
@@ -170,6 +171,11 @@ def _resolve_state_names(pytree: PyTree, key_path: KeyPath) -> str:
 
 
 def _normalize_eqx_name(path: str) -> str:
+    # Normalize bracket notation [N] to dot notation .N so that state fields
+    # inside lists (e.g. layer1.blocks[0].bn1.running_mean) sort identically
+    # to model fields (e.g. layer1.blocks.0.bn1.weight).
+    path = re.sub(r"\[(\d+)\]", r".\1", path)
+
     if "batch_state_index.0" in path:
         return path.replace("batch_state_index.0", "running_mean")
     if "batch_state_index.1" in path:
